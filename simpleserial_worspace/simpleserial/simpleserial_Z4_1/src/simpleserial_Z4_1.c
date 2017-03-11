@@ -24,6 +24,12 @@
 #include "linflexd_uart.h"
 #include "can.h"
 
+#define SUPPORT_HSM 1
+
+#if SUPPORT_HSM
+#include "hsm_interface.h"
+#endif
+
 #define KEY_VALUE1 0x5AF0ul
 #define KEY_VALUE2 0xA50Ful
 
@@ -53,58 +59,6 @@ void hw_init(void)
 #endif /* defined(DEBUG_SECONDARY_CORES) */
 }
 
-struct H2H_tag {
-  union {
-    vuint32_t R;
-    struct {
-      vuint32_t  :28;
-      vuint32_t DATA:1;                  /* Data Read */
-      vuint32_t reserved1:1;              /* reserved */
-      vuint32_t reserved2:1;              /* reserved */
-      vuint32_t BUSY:1;                 /* Busy */
-    } B;
-  } HSM2HTF;
-
-  union {
-    vuint32_t R;
-  } HSM2HTIE;
-
-  union {
-    vuint32_t R;
-    struct {
-      vuint32_t  :23;
-      vuint32_t SET_KEY_IFX:1;			 /* Set key index */
-      vuint32_t KEY_IDX:3;				 /* Key index */
-      vuint32_t READ:1;                  /* Read Output */
-      vuint32_t DATA:1;                  /* Data Load */
-      vuint32_t KEY:1;                   /* Key Load */
-      vuint32_t RESET:1;                 /* Reset */
-      vuint32_t START:1;                 /* Start Conversion */
-    } B;
-  } HT2HSMF;
-
-  union {
-    vuint32_t R;
-  } HT2HSMIE;
-
-  union {
-    vuint32_t R;
-  } HSM2HTS;
-
-  union {
-    vuint32_t R;
-  } HT2HSMS;
-};
-
-#define H2H (*(volatile struct H2H_tag *) 0xFFF30000UL)
-
-
-//void peri_clock_gating (void); /* Configures gating/enabling peripheral(LIN) clocks */
-void puts (char * str);
-void key2hsm(uint8_t * key);
-void text2hsm(uint8_t * text);
-void hsm2text(uint8_t * text);
-
 #define txchar txLINFlexD_0
 #define rxchar rxLINFlexD_0
 #define checkchar checkLINFlexD_0
@@ -116,29 +70,8 @@ void hsm2text(uint8_t * text);
 #define KEY_LENGTH 16
 #define BUFLEN (KEY_LENGTH*4)
 
-#define LED_CORE0 PJ12
-#define LED_CORE1 PA4
-#define LED_CORE2 PK0
-#define LED_BLOAD PF1
-#define LED_CLKOK PB0
-#define LED_HSM   PB12
-
-#define CAN0TX    PA13
-#define CAN0RX    PA15
-
-#define LED_USER1 PC13
-#define LED_USER2 PC14
-#define LED_USER3 PC15
-
-#define UARTTX    PB0
-#define UARTRX    PB1
-#define GPIO3     PI7
-#define GPIO4     PI6
-
-#define LED_SETUP(led) SIUL2.MSCR[led].B.OBE = 1;
-#define LED_ON(led)    SIUL2.GPDO[led].B.PDO_4n = 1;
-#define LED_OFF(led)   SIUL2.GPDO[led].B.PDO_4n = 0;
-
+//void peri_clock_gating (void); /* Configures gating/enabling peripheral(LIN) clocks */
+void puts (char * str);
 
 __attribute__ ((section(".text")))
 
@@ -147,14 +80,14 @@ int main(void)
 {
 	uint32_t i;
 	//uint8_t test[16];
-	char message[70];
+	//char message[70];
 	//uint32_t loopcnt = 0;
 
-	uint8_t key[16];
+	//uint8_t key[16];
 	uint8_t pt[16];
 	uint8_t ct[16];
 	char asciibuf[BUFLEN];
-	uint8_t tmp[KEY_LENGTH]; // = {DEFAULT_KEY};
+	uint8_t tmp[KEY_LENGTH];
 
 	char c;
 	char state = 0;
@@ -165,6 +98,10 @@ int main(void)
 	LED_SETUP(LED_CLKOK);
 	LED_SETUP(LED_HSM);
 
+	LED_SETUP(LED_USER1);
+	LED_SETUP(LED_USER2);
+	LED_SETUP(LED_USER3);
+
 	//Show CORE0 is alive (even if clock switch will fail)
 	LED_ON(LED_CORE0);
 
@@ -172,104 +109,91 @@ int main(void)
 
 	hw_init();
 
+	//External clock in = 16 MHz
 	system16mhz();
+
+	LED_ON(LED_CLKOK);
 
 	//clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
 
 	//SSS = 0x03 selects HSM for PD12
 	//SIUL2.MSCR[PD12].B.SSS = 0x03;
 
-	initLINFlexD_0( 8, 38400 );/* Initialize LINFlex1: UART Mode 8MHz, 38400 Baud */
+	initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
 	testLINFlexD_0();			/* Display a message on the terminal */
 
-	//We can use some of the spare I/O if we want
+	//We can use some of the spare I/O if we want, here is HDR5 for example
 	SIUL2.MSCR[PH5].B.OBE = 1;
 	SIUL2.GPDO[PH5].B.PDO_4n = 0;
 
 
-#if 0
+	/**** CAN SETUP ****/
 	MC_ME.PCTL[70].B.RUN_CFG = 0x1;   /* FlexCAN 0: select peripheral configuration RUN_PC[1] */
-	//initCAN_0_tx();
-	initCAN_0_rx();
+	can0_init_rx();
 
 	uint8_t tx_buffer[5] = {'H', 'e', 'l', 'l', 'o'};
-
-	TransmitMsg(tx_buffer, 5);
+	//Don't uncomment the following unless you actually have something
+	//listening on CAN.
+	//can0_tx(tx_buffer, 5);
 
 	int pwok;
 	uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
 
-	SIUL2.MSCR[PD12].B.OBE = 1;
-	SIUL2.GPDO[PD12].B.PDO_4n = 0;
 
-	while(1){
-		ReceiveMsg();
-		SIUL2.GPDO[PJ4].B.PDO_4n ^= 1;
-
-
-		if (RxLENGTH == 4){
-			SIUL2.GPDO[PD12].B.PDO_4n = 1;
-			pwok = 0x00;
-			for(i =0; i < 4; i++){
-				pwok |= (correct_pw[i] ^ RxDATA[i]);
-			}
-
-			if (pwok == 0){
-				pwok = 1;
-			} else {
-				pwok = 0;
-			}
-
-			tx_buffer[0] = 0xDE;
-			tx_buffer[1] = pwok;
-			TransmitMsg(tx_buffer, 2);
-			SIUL2.GPDO[PD12].B.PDO_4n = 0;
-		}
-	}
-
-#endif
-
-
-#if 0
-	/* Check if the HSM is running */
-	for(i = 0; i < 16; i++){
-		pt[i] = 0;
-		key[i] = 0;
-
-	}
-
-	hex_print(pt, 16, message);
-	puts(message);
-
-	puts("\nSending to HSM\n");
-
-	text2hsm(pt);
-	key2hsm(key);
-
-	puts("Starting Enc\n");
-	H2H.HT2HSMF.B.START = 1;
-	while(H2H.HT2HSMF.B.START);
-
-	puts("Enc Done, reading\n");
-	hsm2text(ct);
-
-	hex_print(ct, 16, message);
-	puts(message);
-
-	puts("\nOMG!\n");
-#endif
-
+#if SUPPORT_HSM
 	puts("Checking HSM\n");
-	H2H.HT2HSMF.B.START = 1;
-	while(H2H.HT2HSMF.B.START);
-	LED_ON(LED_HSM);
+	if (hsm_check()){
+		LED_ON(LED_HSM);
+	}
+#endif
 
-	puts("Hello\n");
+	puts("Hello World\n");
 
+	/*
+	 * Basic application has two modes: CAN and UART.
+	 *
+	 *  CAN MODE:
+	 *    Send 4-byte password with ID 0x555, system responds with DE00 if wrong, DE01 if correct.
+	 *    Default password is DEADBEEF.
+	 *
+	 *  UART MODE:
+	 *    38,400 baud. Uses ChipWhisperer Simple-Serial Protocol, performs AES encryptions.
+	 *
+	 */
 	while(1){
+		if (can0_rx_ready()){
+			can0_rx();
+			LED_TOGGLE(LED_USER1);
+
+			if (RxLENGTH == 4){
+				pwok = 0x00;
+				for(i =0; i < 4; i++){
+					pwok |= (correct_pw[i] ^ RxDATA[i]);
+				}
+
+				if (pwok == 0){
+					pwok = 1;
+				} else {
+					pwok = 0;
+				}
+
+				tx_buffer[0] = 0xDE;
+				tx_buffer[1] = pwok;
+
+				if (pwok){
+					LED_ON(LED_USER2);
+				} else {
+					LED_ON(LED_USER3);
+				}
+
+				can0_tx(tx_buffer, 2);
+			}
+		}
 
 		//Wait for character
-		while(checkchar() == 0);
+		if(checkchar() == 0){
+			continue;
+		}
 
 		c = rxchar();
 
@@ -301,7 +225,7 @@ int main(void)
 			if ((c == '\n') || (c == '\r')) {
 				asciibuf[ptr] = 0;
 				hex_decode(asciibuf, ptr, tmp);
-				key2hsm(tmp);
+				hsm_setkey(tmp);
 				state = STATE_IDLE;
 			} else {
 				asciibuf[ptr++] = c;
@@ -313,11 +237,10 @@ int main(void)
 				asciibuf[ptr] = 0;
 				hex_decode(asciibuf, ptr, pt);
 				/* Do Encryption */
-				text2hsm(pt);
-				H2H.HT2HSMF.B.START = 1;
-				while(H2H.HT2HSMF.B.START);
-
-				hsm2text(ct);
+				hsm_sendin(pt);
+				hsm_start();
+				hsm_wait();
+				hsm_readout(ct);
 
 				/* Print Results */
 				hex_print(ct, 16, asciibuf);
@@ -336,8 +259,7 @@ int main(void)
 			}
 		} else if (state == STATE_KEYINDEX) {
 			if ((c >= '0') && ( c <= '7')){
-				H2H.HT2HSMF.B.KEY_IDX = c - '0';
-				H2H.HT2HSMF.B.SET_KEY_IFX = 1;
+				hsm_setkeyidx(c-'0');
 			} else {
 				puts("Invalid key index\n");
 			}
@@ -345,20 +267,6 @@ int main(void)
 		}
 	}
 
-	/*
-	while(1){
-		for (i = 0; i < 20000; i++) {
-			if (checkLINFlexD_2()){
-				echoLINFlexD_2();
-			}
-
-		}
-
-
-		SIUL2.GPDO[PA12].B.PDO_4n ^= 1;
-	}
-	*/
-	
 	return 0;
 }
 
@@ -407,66 +315,6 @@ void hex_print(const uint8_t * in, int len, char *out)
 		out[j] = 0;
 }
 
-void key2hsm(uint8_t * key)
-{
-	H2H.HT2HSMS.R = *((uint32_t *)(key + 0));
-	H2H.HT2HSMF.B.KEY = 1;
-	while(H2H.HT2HSMF.B.KEY);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(key + 4));
-	H2H.HT2HSMF.B.KEY = 1;
-	while(H2H.HT2HSMF.B.KEY);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(key + 8));
-	H2H.HT2HSMF.B.KEY = 1;
-	while(H2H.HT2HSMF.B.KEY);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(key + 12));
-	H2H.HT2HSMF.B.KEY = 1;
-	while(H2H.HT2HSMF.B.KEY);
-}
-
-void text2hsm(uint8_t * text)
-{
-	H2H.HT2HSMS.R = *((uint32_t *)(text + 0));
-	H2H.HT2HSMF.B.DATA = 1;
-	while(H2H.HT2HSMF.B.DATA);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(text + 4));
-	H2H.HT2HSMF.B.DATA = 1;
-	while(H2H.HT2HSMF.B.DATA);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(text + 8));
-	H2H.HT2HSMF.B.DATA = 1;
-	while(H2H.HT2HSMF.B.DATA);
-
-	H2H.HT2HSMS.R = *((uint32_t *)(text + 12));
-	H2H.HT2HSMF.B.DATA = 1;
-	while(H2H.HT2HSMF.B.DATA);
-}
-
-void hsm2text(uint8_t * text)
-{
-	H2H.HSM2HTF.B.DATA = 1; /* Reset new data flag */
-	H2H.HT2HSMF.B.READ = 1;
-	while(H2H.HT2HSMF.B.READ);
-
-	while(H2H.HSM2HTF.B.DATA == 0);
-	*((uint32_t *)(text + 0))  = H2H.HSM2HTS.R;
-	H2H.HSM2HTF.B.DATA = 1; /* Reset new data flag */
-
-	while(H2H.HSM2HTF.B.DATA == 0);
-	*((uint32_t *)(text + 4)) = H2H.HSM2HTS.R;
-	H2H.HSM2HTF.B.DATA = 1; /* Reset new data flag */
-
-	while(H2H.HSM2HTF.B.DATA == 0);
-	*((uint32_t *)(text + 8)) = H2H.HSM2HTS.R;
-	H2H.HSM2HTF.B.DATA = 1; /* Reset new data flag */
-
-	while(H2H.HSM2HTF.B.DATA == 0);
-	*((uint32_t *)(text + 12)) = H2H.HSM2HTS.R;
-	H2H.HSM2HTF.B.DATA = 1; /* Reset new data flag */
-}
 /********************  End of Main ***************************************/
 
 

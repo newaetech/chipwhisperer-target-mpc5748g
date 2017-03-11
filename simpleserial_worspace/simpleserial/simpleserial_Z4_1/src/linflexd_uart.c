@@ -207,7 +207,7 @@ void echoLINFlexD_1() {                 /* Optional utility to echo char. */
 
 
 
-/* LINFlex 1 for UART functioning */
+/* LINFlex 0 for UART functioning */
 
 void initLINFlexD_0 ( unsigned int MegaHertz, unsigned int BaudRate ) {
   unsigned int Fraction;
@@ -215,7 +215,6 @@ void initLINFlexD_0 ( unsigned int MegaHertz, unsigned int BaudRate ) {
 
   LINFlexD_0.LINCR1.B.INIT = 1;     /* Enter Initialization Mode */
   LINFlexD_0.LINCR1.B.SLEEP = 0;    /* Exit Sleep Mode */
-  //LINFlexD_0.LINCR1.B.MME = 1;
   LINFlexD_0.UARTCR.B.UART = 1;     /* UART Enable, Req'd before UART configuration */
   LINFlexD_0.UARTCR.R = 0x0033;     /* UART Enable, 1 byte tx, no parity, 8 data*/
   LINFlexD_0.UARTSR.B.SZF = 1;      /* CHANGE THIS LINE   Clear the Zero status bit */
@@ -232,12 +231,12 @@ void initLINFlexD_0 ( unsigned int MegaHertz, unsigned int BaudRate ) {
 
   UARTFirstTransmitFlag = 1;        /* Indicate no Tx has taken place yet */
 
-  SIUL2.MSCR[PB0].B.SSS = 3;        /* Pad PC6: Source signal is LIN1_TX  */
-  SIUL2.MSCR[PB0].B.OBE = 1;        /* Pad PC6: OBE=1. */
-  SIUL2.MSCR[PB0].B.PUE = 1;
+  SIUL2.MSCR[PB0].B.SSS = 3;        /* Pad PB0: Source signal is LIN1_TX  */
+  SIUL2.MSCR[PB0].B.OBE = 1;        /* Pad PB0: OBE=1. */
+  SIUL2.MSCR[PB0].B.PUE = 1;		/* Pull-up REQUIRED, as TX pin set to high-z (see errata) during idle. */
   SIUL2.MSCR[PB0].B.PUS = 1;
-  SIUL2.MSCR[PB0].B.SRC = 3;        /* Pad PC6: Full strength slew rate */
-  SIUL2.MSCR[PB1].B.IBE = 1;        /* Pad PC7: Enable pad for input */
+  SIUL2.MSCR[PB0].B.SRC = 3;        /* Pad PB0: Full strength slew rate */
+  SIUL2.MSCR[PB1].B.IBE = 1;        /* Pad PB1: Enable pad for input */
   SIUL2.IMCR[200].B.SSS = 1;        /* LIN0_RX : connected to pad PB1 */
 }
 /*****************************************************************************/

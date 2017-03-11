@@ -11,10 +11,12 @@
 #include <MPC5748G.h>
 #include "project.h"
 
-void initCAN_0_rx(void);
-void initCAN_0_tx (void);
-void TransmitMsg(uint8_t * TxData, unsigned int TxLen);
-void ReceiveMsg (void);
+void can0_set_id(uint16_t id);
+void can0_init_rx(void);
+void can0_init_tx(void);
+void can0_tx(uint8_t * TxData, unsigned int TxLen);
+void can0_rx(void);
+unsigned int can0_rx_ready(void);
 void delay(void);
 
 extern uint32_t  RxLENGTH;            	/* Recieved message number of data bytes */

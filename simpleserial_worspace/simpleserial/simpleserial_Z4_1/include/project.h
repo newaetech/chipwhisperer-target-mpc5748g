@@ -17,6 +17,8 @@
 #ifndef PROJECT_H_
 #define PROJECT_H_
 
+#include "cw308t_mpc5748g.h"
+
 /********************************* Function Prototypes **********************************/
 
 
