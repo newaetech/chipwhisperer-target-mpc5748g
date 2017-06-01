@@ -35,11 +35,11 @@
 						<toolChain id="com.freescale.s32ds.cross.gnu.e200.toolChain.debug.794102990" name="Standard S32DS toolchain for E200" superClass="com.freescale.s32ds.cross.gnu.e200.toolChain.debug">
 							<option id="com.freescale.s32ds.cross.gnu.e200.option.target.family.1782854786" name="Target processor" superClass="com.freescale.s32ds.cross.gnu.e200.option.target.family" value="com.freescale.s32ds.cross.gnu.e200.option.target.family.e200z4" valueType="enumerated"/>
 							<option id="com.freescale.s32ds.cross.gnu.e200.option.target.sysroot.251290453" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.option.target.sysroot" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-							<option id="com.freescale.s32ds.cross.gnu.e200.option.target.libraries.1877337891" name="Libraries support" superClass="com.freescale.s32ds.cross.gnu.e200.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.option.target.libraries.ewl_c" valueType="enumerated"/>
+							<option id="com.freescale.s32ds.cross.gnu.e200.option.target.libraries.1877337891" name="Libraries support" superClass="com.freescale.s32ds.cross.gnu.e200.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="cdt.managedbuild.targetPlatform.gnu.cross.1983218436" isAbstract="false" osList="all" superClass="cdt.managedbuild.targetPlatform.gnu.cross"/>
 							<builder buildPath="${workspace_loc:/hello+pll_Z4_1}/Debug" id="com.freescale.s32ds.cross.gnu.builder.1421423031" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="FSL Make Builder" superClass="com.freescale.s32ds.cross.gnu.builder"/>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.314087801" name="Standard S32DS C Compiler" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler">
-								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.option.optimization.level.554332405" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" valueType="enumerated"/>
+								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.option.optimization.level.554332405" name="Optimization Level" superClass="gnu.c.compiler.option.optimization.level" useByScannerDiscovery="false" value="gnu.c.optimization.level.none" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.debugging.level.1960041995" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.tool.c.compiler.option.optimization.signedchar.1098448769" name="'char' is signed (-fsigned-char)" superClass="com.freescale.s32ds.cross.gnu.tool.c.compiler.option.optimization.signedchar" useByScannerDiscovery="true" value="true" valueType="boolean"/>
 								<option id="com.freescale.s32ds.cross.gnu.tool.c.compiler.option.optimization.functionsections.162753188" name="Function sections (-ffunction-sections)" superClass="com.freescale.s32ds.cross.gnu.tool.c.compiler.option.optimization.functionsections" useByScannerDiscovery="true" value="true" valueType="boolean"/>
@@ -55,15 +55,17 @@
 									<listOptionValue builtIn="false" value="TURN_ON_CPU1"/>
 									<listOptionValue builtIn="false" value="TURN_ON_CPU2"/>
 									<listOptionValue builtIn="false" value="DEBUG_SECONDARY_CORES"/>
+									<listOptionValue builtIn="false" value="EWL_CONSOLE_SUPPORT=1"/>
 								</option>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.family.563033083" name="Target Processor" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.family" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.family.e200z4" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.sysroot.1994984621" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.sysroot" useByScannerDiscovery="false" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.1113619037" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.ewl_c" valueType="enumerated"/>
+								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.1113619037" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1140565269" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include/pa&quot;"/>
 								</option>
+								<option id="gnu.c.compiler.option.dialect.std.1230407894" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.default" valueType="enumerated"/>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1829050634" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.1353373678" name="Standard S32DS C++ Compiler" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler">
@@ -82,11 +84,13 @@
 								</option>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.family.854927323" name="Target Processor" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.family" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.family.e200z4" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.sysroot.425180727" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.sysroot" useByScannerDiscovery="false" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries.356658889" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries.ewl_c" valueType="enumerated"/>
+								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries.356658889" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.include.paths.1916791840" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include/pa&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C++/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C++/include/pa&quot;"/>
 								</option>
 							</tool>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.1867136501" name="Standard S32DS C Linker" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.linker">
@@ -98,7 +102,7 @@
 								</option>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.family.233493528" name="Target Processor" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.family" value="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.family.e200z4" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.sysroot.1061246296" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.sysroot" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries.2102702584" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries.ewl_c" valueType="enumerated"/>
+								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries.2102702584" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.c.linker.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 								<inputType id="com.freescale.s32ds.cross.gnu.tool.c.linker.inputType.scriptfile.1651206249" superClass="com.freescale.s32ds.cross.gnu.tool.c.linker.inputType.scriptfile"/>
 							</tool>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.632477964" name="Standard S32DS C++ Linker" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker">
@@ -110,7 +114,7 @@
 								</option>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.family.1554524646" name="Target Processor" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.family" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.family.e200z4" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.sysroot.1611486136" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.sysroot" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries.574610197" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries.ewl_c" valueType="enumerated"/>
+								<option id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries.574610197" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.cpp.linker.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 							</tool>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.archiver.375386913" name="Standard S32DS Archiver" superClass="com.freescale.s32ds.cross.gnu.e200.tool.archiver"/>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.assembler.2029304976" name="Standard S32DS Assembler" superClass="com.freescale.s32ds.cross.gnu.e200.tool.assembler">
@@ -130,7 +134,7 @@
 								</option>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.family.1590518007" name="Target Processor" superClass="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.family" value="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.family.e200z4" valueType="enumerated"/>
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.sysroot.1864090898" name="Sysroot" superClass="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.sysroot" value="--sysroot=&quot;${eclipse_home}../S32DS/e200_ewl2&quot;" valueType="string"/>
-								<option id="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries.1621921797" superClass="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries.ewl_c" valueType="enumerated"/>
+								<option id="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries.1621921797" superClass="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries" value="com.freescale.s32ds.cross.gnu.e200.tool.assembler.option.target.libraries.ewl_c9x_c" valueType="enumerated"/>
 								<option id="gnu.both.asm.option.include.paths.438325908" name="Include paths (-I)" superClass="gnu.both.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include&quot;"/>
@@ -367,6 +371,14 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
-	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/simpleserial_Z4_1"/>
+		</configuration>
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/simpleserial_Z4_1"/>
+		</configuration>
+	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

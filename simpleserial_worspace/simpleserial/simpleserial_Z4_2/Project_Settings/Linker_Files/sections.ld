@@ -102,6 +102,12 @@ SECTIONS
       __SP_INIT = . ;
       . += 4;
     } > m_data
+    
+    .sharedRAM (NOLOAD):
+    {
+     *(.sharedRAM)
+    } > shared
+    
  
 /*-------- LABELS USED IN CODE -------------------------------*/
         
@@ -120,6 +126,9 @@ __SRAM_SIZE = SRAM_SIZE;
 __SRAM_BASE_ADDR = SRAM_BASE_ADDR;
 
 __BSS_SIZE    = __BSS_END - __BSS_START;      
+      
+      
+__shared_mem = ADDR(.sharedRAM);
       
 }
 

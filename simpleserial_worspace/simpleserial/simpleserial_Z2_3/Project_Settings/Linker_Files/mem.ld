@@ -7,7 +7,7 @@ __STACK_SIZE           = 4096 ;
 
 SRAM_SIZE =  256K;    
 /* Define SRAM Base Address */
-SRAM_BASE_ADDR = 0x40080000;
+SRAM_BASE_ADDR = 0x40060000;
     
 MEMORY
 {
@@ -18,6 +18,7 @@ MEMORY
     cpu2_reset_vec : org = 0x00FA0000+0x04,   len = 0x4      
         
     m_text :	org = 0x13a0000, len = 1856K  
-    m_data :	org = 0x40080000,   len = 256K
+    m_data :	org = 0x40060000,   len = 128K
+    shared :    org = 0x40080000, len = 64k
 }
 

@@ -137,8 +137,8 @@ void system40mhz(void)
   PLL_40MHz();
 }
 
-//This changes the mode from 16MHz internal to 20MHz CLK-IN (no PLL).
-void XTAL_20MHz(void)
+//This changes the mode from 16MHz internal to 16MHz CLK-IN (no PLL).
+void XTAL_16MHz(void)
 {
   FXOSC.CTL.B.OSCBYP=1; //Bypass mode
 
@@ -151,7 +151,7 @@ void XTAL_20MHz(void)
   while(MC_ME.GS.B.S_MTRANS == 1);      /* Wait for mode transition complete */
 }
 
-void system20mhz(void)
+void system16mhz(void)
 {
   /* enable all modes, enable all peripherals */
   MC_ME.ME.R        = 0x000005FF;
@@ -164,15 +164,15 @@ void system20mhz(void)
   /* S80 - max 80 MHz */
   /* MC_CGM_SC_DC1[DIV] and MC_CGM_SC_DC5[DIV] must be equal at all times */
   MC_CGM.SC_DC1.B.DIV = 0;  /* Freq = sysclk / (2+1) = sysclk/2 */
-  MC_CGM.SC_DC1.B.DE  = 0;  /* Enable divided clock */
+  MC_CGM.SC_DC1.B.DE  = 0;  /* DISABLE divided clock */
 
   /* FS80 - max 80 MHz */
   /* MC_CGM_SC_DC1[DIV] and MC_CGM_SC_DC5[DIV] must be equal at all times */
   MC_CGM.SC_DC5.R = MC_CGM.SC_DC1.R;  /* 80 MHz max */
 
   /* S40 - max 40 MHz */
-  MC_CGM.SC_DC2.B.DIV = 0;  /* Freq = sysclk / (3+1) = sysclk/4 */
-  MC_CGM.SC_DC2.B.DE  = 0;  /* Enable divided clock */
+  MC_CGM.SC_DC2.B.DIV = 3;  /* Freq = sysclk / (3+1) = sysclk/4 */
+  MC_CGM.SC_DC2.B.DE  = 1;  /* Enable divided clock */
 
   /* F40 - max 40 MHz (for PIT, etc.) - use default values */
 
@@ -180,13 +180,11 @@ void system20mhz(void)
 
   /* F20 - clock out configured at clock_out* function */
 
-  XTAL_20MHz();
+
+  XTAL_16MHz();
 }
 
-void system16mhz(void)
-{
-	system20mhz();
-}
+
 
 void enter_STOP_mode (void) {		/* Transit to STOP mode */
   MC_ME.MCTL.R = 0xA0005AF0;		/* Enter STOP mode and key */

@@ -54,7 +54,7 @@ void can0_init_rx(void)
                               	/* PROPSEG= Prop_Seg - 1 = 7 - 1 = 6 */
                               	/* RJW = Resync Jump Width - 1 = 4 = 1 */
   	  	  	  	  	  	  	  	/* SMP = 1: use 3 bits per CAN sample */
-                              	/* CLKSRC=0 (unchanged): Fcanclk= Fxtal= 40 MHz*/
+                              	/* CLKSRC=0 (unchanged): Fcanclk= Fxtal= 16 MHz*/
   for (i=0; i<96; i++) {      	/* MPC574xG has 96 buffers after MPC5748G rev 0*/
     CAN_0.MB[i].CS.B.CODE = 0;  /* Inactivate all message buffers */
   }
@@ -63,7 +63,7 @@ void can0_init_rx(void)
   CAN_0.MB[4].CS.B.CODE = 4;    /* MB 4 set to RX EMPTY */
   CAN_0.RXMGMASK.R = 0x1FFFFFFF;/* Global acceptance mask */
 
-  SIUL2.MSCR[CAN0TX].B.SSS = 1;    	/* Pad PA13: Source signal is CAN0_TX  */
+  SIUL2.MSCR[CAN0TX].B.SSS = 4;    	/* Pad PA13: Source signal is CAN0_TX  */
   SIUL2.MSCR[CAN0TX].B.OBE = 1;    	/* Pad PA13: Output Buffer Enable */
   SIUL2.MSCR[CAN0TX].B.SRC = 3;    	/* Pad PA13: Maximum slew rate */
   SIUL2.MSCR[CAN0RX].B.IBE = 1;    	/* Pad PA15: Enable pad for input - CAN0_RX */
@@ -90,7 +90,7 @@ void can0_init_tx(void)
   CAN_0.MCR.B.MDIS = 0;       	/* Enable module for config. (Sets FRZ, HALT)*/
   while (!CAN_0.MCR.B.FRZACK) {}/* Wait for freeze acknowledge to set */
   CAN_0.CTRL1.R = 0x01DB0086;  	/* CAN bus: same as for CAN_0 */
-  /* CAN bus: 40 MHz clksrc, 500 kbps with 16 tq */
+  /* CAN bus: 16 MHz clksrc, 500 kbps with 16 tq */
                                 	/* PRESDIV+1 = Fclksrc/Ftq = 16 MHz/8MHz = 2 */
                                 	/*    so PRESDIV = 1 */
                                 	/* PSEG2 = Phase_Seg2 - 1 = 4 - 1 = 3 */
@@ -105,7 +105,7 @@ void can0_init_tx(void)
   }
   CAN_0.MB[0].CS.B.CODE = 8;    /* Message Buffer 0 set to TX INACTIVE */
 
-  SIUL2.MSCR[CAN0TX].B.SSS = 1;    	/* Pad PA13: Source signal is CAN0_TX  */
+  SIUL2.MSCR[CAN0TX].B.SSS = 4;    	/* Pad PA13: Source signal is CAN0_TX  */
   SIUL2.MSCR[CAN0TX].B.OBE = 1;    	/* Pad PA13: Output Buffer Enable */
   SIUL2.MSCR[CAN0TX].B.SRC = 3;    	/* Pad PA13: Maximum slew rate */
   SIUL2.MSCR[CAN0RX].B.IBE = 1;    	/* Pad PA15: Enable pad for input - CAN0_RX */

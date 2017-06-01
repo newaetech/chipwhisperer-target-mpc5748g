@@ -12,15 +12,15 @@
 #define LED_CORE1 PA4
 #define LED_CORE2 PK0
 #define LED_BLOAD PF1
-#define LED_CLKOK PB9
+#define LED_CLKOK PJ0
 #define LED_HSM   PB12
 
 #define CAN0TX    PA13
 #define CAN0RX    PA15
 
-#define LED_USER1 PC13
+#define LED_USER1 PC15
 #define LED_USER2 PC14
-#define LED_USER3 PC15
+#define LED_USER3 PC13
 
 #define UARTTX    PB0
 #define UARTRX    PB1
