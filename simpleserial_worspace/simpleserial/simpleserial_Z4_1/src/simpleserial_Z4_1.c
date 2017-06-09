@@ -1,32 +1,45 @@
-/*****************************************************************************/
-/* FILE NAME: hello+pll_z4_1.c        COPYRIGHT (c) NXP Semiconductors 2016  */
-/*                                                      All Rights Reserved  */
-/* PLATFORM: DEVKIT-MPC5748G												 */
-/* DESCRIPTION: Main C program for core 0 (e200z4a)                          */
-/*				Configures the system clock to 160 MHz and also configures	 */
-/*				different clock groups.										 */
-/*				Turns on the the DS4, DS6 and DS8 LEDs. Also outputs PLL  	 */
-/* 				clock scaled to PLL/10 on port pin PG7 (J3_16)				 */
-/*				Core 0 : Configures System clock and Turns on DS4			 */
-/*                                                                           */
-/*****************************************************************************/
-/* REV      AUTHOR        DATE        DESCRIPTION OF CHANGE                  */
-/* ---   -----------    ----------    ---------------------                  */
-/* 1.0	  SM            29 Jul 2013   Initial Version                        */
-/* 1.2    SM            12 Feb 2015   Removed unrequired SIUL ME_PCTL code 	 */
-/* 1.3	  K Shah		25 Feb 2016	  Ported to S32DS						 */
-/*****************************************************************************/
+/****************************************************************************
 
-#include "derivative.h" /* include peripheral declarations */
+  Example Application for MPC5748G Demo board for CW308
+  See https://wiki.newae.com/CW308T-MPC5748G for details.
+
+    This file is part of the ChipWhisperer Example Targets
+    Copyright (C) 2012-2017 NewAE Technology Inc.
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+****************************************************************************/
+
+
+#include <stdio.h>
+
+#include "derivative.h"
 #include "clk.h"
 #include "project.h"
 #include "mode.h"
 #include "linflexd_uart.h"
 #include "can.h"
+
+#include "cw308t_mpc5748g.h"
 #include "sharedmem.h"
-#include <stdio.h>
+#include "simpleserial.h"
 
 #define SUPPORT_HSM 1
+
+#ifndef SUPPORT_HSM
+#define SUPPORT_HSM 0
+#endif
 
 #if SUPPORT_HSM
 #include "hsm_interface.h"
@@ -35,37 +48,36 @@
 #define KEY_VALUE1 0x5AF0ul
 #define KEY_VALUE2 0xA50Ful
 
-uint8_t* hex_decode(const char *in, int len,uint8_t *out);
-void hex_print(const uint8_t * in, int len, char *out);
 
 extern void xcptn_xmpl(void);
-
-#define txchar txLINFlexD_0
-#define rxchar rxLINFlexD_0
-#define checkchar checkLINFlexD_0
-
-#define STATE_IDLE 0
-#define STATE_KEY 1
-#define STATE_PLAIN 2
-#define STATE_KEYINDEX 3
-#define STATE_PW 4
-#define STATE_GROUP 5
-#define KEY_LENGTH 16
-#define BUFLEN (KEY_LENGTH*8)
 
 #define TRIG_INIT() SIUL2.MSCR[PI6].B.OBE = 1
 #define TRIG_HIGH() SIUL2.GPDO[PI6].B.PDO_4n = 1
 #define TRIG_LOW()  SIUL2.GPDO[PI6].B.PDO_4n = 0
 
-
-//void peri_clock_gating (void); /* Configures gating/enabling peripheral(LIN) clocks */
-
+//Start in .text section now
 __attribute__ ((section(".text")))
 
-/******************************** Hardware-Specific Work ************************/
+/**************************** Serial I/O Functions ************************/
+
+/* Specify UART to use here - need to change init code too if modified */
+#define checkchar checkLINFlexD_0
+
+
+/* putchar needed by simpleserial, pass-through to our function */
+void txchar(char c)
+{
+	txLINFlexD_0(c);
+}
+
+/* getchar needed by simpleserial, pass-through to our function */
+char rxchar(void)
+{
+	return rxLINFlexD_0();
+}
 
 /** Enable printf() - these are lazy routines to clip into EWL rather than use the
- *  correct callbacks. */
+ *  correct callbacks. They work for now though. */
 int __read_console(__file_handle handle, unsigned char * buffer, size_t * count)
 {
 	return (int) __io_error;
@@ -89,10 +101,190 @@ int __write_console(__file_handle handle, unsigned char * buffer, size_t * count
 	return (int)__no_io_error;
 }
 
-/** Init cores, etc etc. */
+/************************* Simpleserial Commands / Functions *****************/
 
-void hw_init(void)
+#define MODULE_SWAES     0x80
+#define MODULE_SWAESHSM  0x40
+#define MODULE_HWAES     0x20
+#define MODULE_XOR       0x10
+uint8_t enc_module = MODULE_SWAES;
+
+uint8_t pwgroup;
+
+uint8_t set_module(uint8_t* mod)
 {
+	enc_module = mod[0];
+	if ((enc_module & 0xF0) == MODULE_HWAES){
+		hsm_setkeyidx(enc_module & 0x0F);
+	}
+
+	return 0;
+}
+
+uint8_t get_key(uint8_t* k)
+{
+	if (enc_module == MODULE_HWAES){
+		hsm_setkey(k);
+	} else if (enc_module == MODULE_SWAES){
+		//todo
+		;
+	} else if (enc_module == MODULE_SWAESHSM){
+		//todo
+		;
+	}
+	else if (enc_module == MODULE_XOR){
+		//todo
+		;
+	}
+	return 0x00;
+}
+
+uint8_t get_pt(uint8_t* pt)
+{
+	if (enc_module == MODULE_HWAES){
+#if SUPPORT_HSM
+		hsm_sendin(pt);
+		hsm_start();
+		hsm_wait();
+		hsm_readout(pt);
+#else
+		printf("HSM NOT SUPPORTED\n");
+#endif
+	} else if (enc_module == MODULE_SWAES){
+		TRIG_HIGH();
+		TRIG_LOW();
+	} else if (enc_module == MODULE_SWAESHSM){
+#if SUPPORT_HSM
+		hsm_sendin(pt);
+		hsm_start();
+		hsm_wait();
+		hsm_readout(pt);
+#else
+		printf("HSM NOT SUPPORTED\n");
+#endif
+	}
+	else if (enc_module == MODULE_XOR){
+#if SUPPORT_HSM
+		hsm_release_gpio();
+#endif
+		TRIG_HIGH();
+		TRIG_LOW();
+	}
+
+	;//aes_indep_enc(pt); /* encrypting the data block */
+	TRIG_LOW();
+	simpleserial_put('r', 16, pt);
+	return 0x00;
+}
+
+uint8_t set_pwlock(uint8_t * status)
+{
+	PASS.PG[pwgroup].LOCK3.B.PGL = 1;
+	printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
+	return 0x00;
+}
+
+uint8_t set_pwgroup(uint8_t * group)
+{
+	//Uncomment this to print the lifecycle
+	//printf("Lifecycle from LCSTAT: %u\n", PASS.LCSTAT.B.LIFE);
+
+	if (group[0] < 4){
+		pwgroup = group[0];
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+/***
+ * This example tries to unlock a password group. The device must be in "OEM Production" lifecycle for this to
+ * work, otherwise the password locks don't do anything.
+ */
+uint8_t set_pw(uint8_t * pw)
+{
+	int i;
+#if SUPPORT_HSM
+	hsm_release_gpio();
+#endif
+
+	PASS.CHSEL.B.GRP = pwgroup;
+
+	TRIG_HIGH();
+
+	PASS.CIN[0].R = *((uint32_t *)pw + 0);
+	PASS.CIN[1].R = *((uint32_t *)pw + 1);
+	PASS.CIN[2].R = *((uint32_t *)pw + 2);
+	PASS.CIN[3].R = *((uint32_t *)pw + 3);
+	PASS.CIN[4].R = *((uint32_t *)pw + 4);
+	PASS.CIN[5].R = *((uint32_t *)pw + 5);
+	PASS.CIN[6].R = *((uint32_t *)pw + 6);
+	PASS.CIN[7].R = *((uint32_t *)pw + 7);
+
+	//Some low-noise time for comparison before setting trigger low
+	for(i = 0; i < 16; i++);
+
+	TRIG_LOW();
+	printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
+
+	return pwgroup;
+}
+
+/***
+ * This example sends data to another core. You must have enabled the other core for this to work, otherwise
+ * the process will hang forever (oops). It uses both the shared ram along with the hardware gate's to manage
+ * this. See NXP App-Note AN4805 for more examples of using these gates, this is just one small example.
+ */
+uint8_t core_example(uint8_t * data)
+{
+	uint8_t status;
+
+	/* Wait for previous processing to be done */
+	status = CORE0_LOCK;
+	while(status != GATE_UNLOCK){
+		status = Get_Gate_status(GATE_0);
+	}
+
+	/* Write shared resource */
+	sharedram_uint32[0] = 0xBAADBEEF;
+
+	printf("Waiting on CORE1, sent %08x\n", (unsigned int)sharedram_uint32[0]);
+
+	/* Lock gate, this tells other core we are done & they can read data */
+	while(status != CORE0_LOCK){
+		status = Lock_Gate(GATE_0);
+	}
+
+	/* Wait for other core to reset this gate, which means they are done */
+	while(status == CORE0_LOCK){
+		status = Get_Gate_status(GATE_0);
+	}
+
+	printf("Doneski, CORE1 sends %08x\n", (unsigned int)sharedram_uint32[0]);
+
+	return 0;
+}
+
+/************************************ Main ***********************************/
+int main(void)
+{
+	uint32_t i;
+
+	/* Before any other stuff online - setup user I/O */
+	LED_SETUP(LED_CORE0);
+	LED_SETUP(LED_CLKOK);
+	LED_SETUP(LED_HSM);
+
+	LED_SETUP(LED_USER1);
+	LED_SETUP(LED_USER2);
+	LED_SETUP(LED_USER3);
+
+	TRIG_INIT();
+
+	//Show CORE0 is alive (even if clock switch will fail)
+	LED_ON(LED_CORE0);
+
+	//Turn on other cores (if in use) now
 #if defined(DEBUG_SECONDARY_CORES)
 	uint32_t mctl = MC_ME.MCTL.R;
 #if defined(TURN_ON_CPU1)
@@ -100,7 +292,7 @@ void hw_init(void)
 	MC_ME.CCTL[2].R = 0x00FE;
 	/* Set Start address for core 1: Will reset and start */
 	MC_ME.CADDR[2].R = 0x11d0000 | 0x1;
-#endif	
+#endif
 #if defined(TURN_ON_CPU2)
 	/* enable core 2 in all modes */
 	MC_ME.CCTL[3].R = 0x00FE;
@@ -112,65 +304,25 @@ void hw_init(void)
 #endif /* defined(DEBUG_SECONDARY_CORES) */
 
 	sharedmem_init();
-}
 
-/************************************ Main ***********************************/
-int main(void)
-{
-	uint32_t i;
-
-	//uint8_t key[16];
-	uint8_t pt[16];
-	uint8_t ct[16];
-	uint8_t pw[32];
-	uint32_t pwgroup = 0;
-	uint32_t pwtmp;
-	char asciibuf[BUFLEN];
-	uint8_t tmp[KEY_LENGTH];
-	uint8_t status;
-
-	char c;
-	char state = 0;
-	int ptr;
-
-	//Init this before anything else
-	LED_SETUP(LED_CORE0);
-	LED_SETUP(LED_CLKOK);
-	LED_SETUP(LED_HSM);
-
-	LED_SETUP(LED_USER1);
-	LED_SETUP(LED_USER2);
-	LED_SETUP(LED_USER3);
-
-//#if !SUPPORT_HSM
-	TRIG_INIT();
-//#endif
-
-	//Show CORE0 is alive (even if clock switch will fail)
-	LED_ON(LED_CORE0);
-	/*LED_ON(LED_CORE1);
-	LED_ON(LED_CORE2);
-	LED_ON(LED_CLKOK);
-	LED_ON(LED_HSM);*/
 
 	xcptn_xmpl (); /* Configure and Enable Interrupts */
 
-	hw_init();
 
-	//External clock in = 16 MHz
+	//External clock in = 16 MHz, we will run CPU from that to make SCA easier
 	system16mhz();
 
+	// If we get here - core is probably OK!
 	LED_ON(LED_CLKOK);
 
+	//Optional - enable clock out (will increase noise so not on by default, not needed to our clkin anyway)
 	//clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
-
-	//SSS = 0x03 selects HSM for PD12
-	//SIUL2.MSCR[PD12].B.SSS = 0x03;
 
 	initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
 	testLINFlexD_0();			/* Display a message on the terminal */
 
-	//We can use some of the spare I/O if we want, here is HDR5 for example
+
+	//We can use some of the spare I/O if we want, here is HDR5 for example being set high
 	SIUL2.MSCR[PH5].B.OBE = 1;
 	SIUL2.GPDO[PH5].B.PDO_4n = 0;
 
@@ -179,15 +331,19 @@ int main(void)
 	can0_init_rx();
 
 	uint8_t tx_buffer[5] = {'H', 'e', 'l', 'l', 'o'};
-	//Don't uncomment the following unless you actually have something
-	//listening on CAN.
+	//Example of sending a CAN message.
+	//DO NOT uncomment the following unless you actually have something listening on CAN, since it will hold here
+	//until the message transmits OK (we aren't using interrupt-driven CAN).
 	//can0_tx(tx_buffer, 5);
 
 	int pwok;
 	uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
 
 #if SUPPORT_HSM
-	puts("Checking HSM...");
+	puts("Loading HSM functions into RAM\n");
+	//hsm_loadfuncions();
+
+	puts("Checking for HSM...");
 	if (hsm_check()){
 		puts("Found\n");
 		LED_ON(LED_HSM);
@@ -197,7 +353,15 @@ int main(void)
 	}
 #endif
 
-	puts("Hello World\n");
+	simpleserial_init();
+    simpleserial_addcmd('k', 16, get_key);
+    //simpleserial_addcmd('c', 16, set_ct);
+    simpleserial_addcmd('p', 16,  get_pt);
+    simpleserial_addcmd('q',  32,  set_pw);
+    simpleserial_addcmd('h', 1, set_module);
+    simpleserial_addcmd('g', 1, set_pwgroup);
+    simpleserial_addcmd('l', 0, set_pwlock);
+    simpleserial_addcmd('w', 4, core_example);
 
 
 	/*
@@ -208,44 +372,10 @@ int main(void)
 	 *    Default password is DEADBEEF.
 	 *
 	 *  UART MODE:
-	 *    38,400 baud. Uses ChipWhisperer Simple-Serial Protocol, performs AES encryptions.
+	 *    38,400 baud. Uses ChipWhisperer Simple-Serial Protocol, performs AES encryptions & other tasks.
 	 *
 	 */
 
-#if 0
-	char str[20];
-	volatile uint32_t flag = 0;
-	while(1){
-#if SUPPORT_HSM
-		hsm_release_gpio();
-#endif
-		/*
-		rxchar();
-		volatile uint32_t i,j,totalcnt;
-		totalcnt = 0;
-		TRIG_HIGH();
-		for(i = 0; i < 100; i++){
-			for(j = 0; j < 100; j++){
-				totalcnt++;
-			}
-		}
-		TRIG_LOW();
-		sprintf(str, "%ud %ud %ud\n", i, j, totalcnt);
-		puts(str);
-		*/
-		//rxchar();
-		while(flag == 0){
-			TRIG_HIGH();
-			TRIG_LOW();
-		}
-		puts("HOLY SHIT");
-	}
-
-	puts("WHOA BUDDY");
-	puts("WHOA BUDDY");
-	puts("WHOA BUDDY");
-	puts("WHOA BUDDY");
-#endif
 
 	while(1){
 		if (can0_rx_ready()){
@@ -288,226 +418,33 @@ int main(void)
 		}
 
 		//Wait for character
-		if(checkchar() == 0){
-			continue;
+		if(checkchar() == 1){
+			simpleserial_get();
 		}
-
-		c = rxchar();
-
-		if (state == STATE_IDLE){
-			LED_OFF(LED_USER1);
-			LED_OFF(LED_USER2);
-		}
-
-		if (c == 'x') {
-			ptr = 0;
-			state = STATE_IDLE;
-			continue;
-		}
-
-		if (c == 'k') {
-			ptr = 0;
-			state = STATE_KEY;
-			continue;
-		}
-
-		else if (c == 'p') {
-			ptr = 0;
-			state = STATE_PLAIN;
-			continue;
-		}
-
-		else if (c == 'q') {
-			ptr = 0;
-			state = STATE_PW;
-			continue;
-		}
-
-		else if (c == 'g') {
-			ptr = 0;
-			state = STATE_GROUP;
-			continue;
-		}
-
-		else if (c == 'h'){
-			ptr = 0;
-			state = STATE_KEYINDEX;
-			continue;
-		}
-
-		else if (c == 'l'){
-			ptr = 0;
-			PASS.PG[pwgroup].LOCK3.B.PGL = 1;
-			printf("pg %d: %08x\n", pwgroup, PASS.PG[pwgroup].LOCK3.R);
-			continue;
-		}
-
-		else if (c == 'r'){
-
-			/* Wait for previous processing to be done */
-			status = CORE0_LOCK;
-			while(status != GATE_UNLOCK){
-				status = Get_Gate_status(GATE_0);
-			}
-
-			/* Write shared resource */
-			sharedram_uint32[0] = 0xBAADBEEF;
-
-			printf("Waiting on CORE1, sent %08x\n", sharedram_uint32[0]);
-
-			/* Lock gate, this tells other core we are done & they can read data */
-			while(status != CORE0_LOCK){
-				status = Lock_Gate(GATE_0);
-			}
-
-			/* Wait for other core to reset this gate, which means they are done */
-			while(status == CORE0_LOCK){
-				status = Get_Gate_status(GATE_0);
-			}
-
-			printf("Doneski, CORE1 sends %08x\n", sharedram_uint32[0]);
-
-			ptr = 0;
-			state = STATE_IDLE;
-			continue;
-		}
-
-		else if (state == STATE_PW) {
-			if ((c == '\n') || (c == '\r')) {
-#if SUPPORT_HSM
-		hsm_release_gpio();
-#endif
-
-				asciibuf[ptr] = 0;
-				hex_decode(asciibuf, ptr, pw);
-
-				PASS.CHSEL.B.GRP = pwgroup;
-
-				TRIG_HIGH();
-
-
-				PASS.CIN[0].R = *((uint32_t *)pw + 0);
-				PASS.CIN[1].R = *((uint32_t *)pw + 1);
-				PASS.CIN[2].R = *((uint32_t *)pw + 2);
-				PASS.CIN[3].R = *((uint32_t *)pw + 3);
-				PASS.CIN[4].R = *((uint32_t *)pw + 4);
-				PASS.CIN[5].R = *((uint32_t *)pw + 5);
-				PASS.CIN[6].R = *((uint32_t *)pw + 6);
-				PASS.CIN[7].R = *((uint32_t *)pw + 7);
-
-				//Some low-noise time for comparison before setting trigger low
-				for(pwtmp = 0; pwtmp < 16; pwtmp++);
-
-
-				TRIG_LOW();
-
-				printf("pg %d: %08x\n", pwgroup, PASS.PG[pwgroup].LOCK3.R);
-				ptr = 0;
-				state = STATE_IDLE;
-			} else {
-				asciibuf[ptr++] = c;
-			}
-		}
-
-		else if (state == STATE_GROUP) {
-			printf("Lifecycle from LCSTAT: %u\n", PASS.LCSTAT.B.LIFE );
-			if ((c >= '0') && ( c <= '3')){
-				pwgroup = c - '0';
-				printf("Set group %d\n", pwgroup);
-			} else {
-				puts("Invalid PW Group #\n");
-			}
-			state = STATE_IDLE;
-		}
-
-		else if (state == STATE_KEY) {
-			if ((c == '\n') || (c == '\r')) {
-				LED_ON(LED_USER2);
-				asciibuf[ptr] = 0;
-				hex_decode(asciibuf, ptr, tmp);
-				hsm_setkey(tmp);
-				state = STATE_IDLE;
-			} else {
-				asciibuf[ptr++] = c;
-			}
-		}
-
-		else if (state == STATE_PLAIN) {
-			if ((c == '\n') || (c == '\r')) {
-				LED_ON(LED_USER1);
-				asciibuf[ptr] = 0;
-				hex_decode(asciibuf, ptr, pt);
-				/* Do Encryption */
-				hsm_sendin(pt);
-				hsm_start();
-				hsm_wait();
-				hsm_readout(ct);
-
-				/* Print Results */
-				hex_print(ct, 16, asciibuf);
-
-				puts("r");
-				puts(asciibuf);
-				puts("\n");
-
-				state = STATE_IDLE;
-				LED_OFF(LED_USER1);
-			} else {
-                if (ptr >= BUFLEN){
-                    state = STATE_IDLE;
-                } else {
-                    asciibuf[ptr++] = c;
-                }
-			}
-		} else if (state == STATE_KEYINDEX) {
-			if ((c >= '0') && ( c <= '7')){
-				hsm_setkeyidx(c-'0');
-			} else {
-				puts("Invalid key index\n");
-			}
-			state = STATE_IDLE;
-		}
-
 	}
 
-	return 0;
-}
+	/*
+		else if (c == 'c'){
+			ptr = 0;
 
-#if 0
-void peri_clock_gating (void) {		/* Configures gating/enabling peripheral clocks for modes*/
-  MC_ME.RUN_PC[0].R = 0x00000000;  	/* Gate off clock for all RUN modes */
-  MC_ME.RUN_PC[1].R = 0x000000FC;  	/* Configures peripheral clock for all RUN modes */
-  MC_ME.PCTL[52].B.RUN_CFG = 0x1;  	/* LINFlex 2: select peripheral configuration RUN_PC[1] */
-//  MC_ME.PCTL[51].B.RUN_CFG = 0x1;  	/* LINFlex 1: select peripheral configuration RUN_PC[1] */
-}
-#endif
+			MC_ME.CCTL[2].R = 0x0000;
+			MC_ME.CCTL[3].R = 0x0000;
 
-char hex_lookup[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-
-uint8_t* hex_decode(const char *in, int len,uint8_t *out)
-{
-        unsigned int i, t, hn, ln;
-
-        for (t = 0,i = 0; i < len; i+=2,++t) {
-
-                hn = in[i] > '9' ? (in[i]|32) - 'a' + 10 : in[i] - '0';
-                ln = in[i+1] > '9' ? (in[i+1]|32) - 'a' + 10 : in[i+1] - '0';
-                out[t] = (hn << 4 ) | ln;
-        }
-
-        return out;
-}
-
-void hex_print(const uint8_t * in, int len, char *out)
-{
-		unsigned int i,j;
-		j=0;
-		for (i=0; i < len; i++) {
-			out[j++] = hex_lookup[in[i] >> 4];
-			out[j++] = hex_lookup[in[i] & 0x0F];
+			continue;
 		}
 
-		out[j] = 0;
+		else if (c == 'w'){
+			ptr = 0;
+
+			MC_ME.CCTL[2].R = 0x00FE;
+			MC_ME.CCTL[3].R = 0x00FE;
+
+			continue;
+		}
+	*/
+
+
+	return 0;
 }
 
 /********************  End of Main ***************************************/

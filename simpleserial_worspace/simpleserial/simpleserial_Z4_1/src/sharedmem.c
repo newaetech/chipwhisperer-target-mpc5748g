@@ -8,7 +8,7 @@
 
 extern uint32_t __shared_mem[];
 volatile uint32_t * sharedram_uint32 = __shared_mem;
-volatile uint8_t * sharedram_uint8 = __shared_mem;
+volatile uint8_t * sharedram_uint8 = (uint8_t *)__shared_mem;
 
 /*******************************************************************************
 Function Name : Get_Gate_status

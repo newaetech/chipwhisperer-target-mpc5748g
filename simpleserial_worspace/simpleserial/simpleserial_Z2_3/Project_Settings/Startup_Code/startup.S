@@ -187,6 +187,7 @@ __icache_no_abort:
 		;#msync
 		mtspr	1011, r5
 #endif
+
 #if defined(D_CACHE)
 ;#****************** Invalidate and Enable the Data cache **************
 __dcache_cfg:

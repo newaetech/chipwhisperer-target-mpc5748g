@@ -56,6 +56,7 @@
 								<option id="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.1441698672" superClass="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries" useByScannerDiscovery="false" value="com.freescale.s32ds.cross.gnu.e200.tool.c.compiler.option.target.libraries.ewl_c" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1851389554" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../include&quot;"/>
+									<listOptionValue builtIn="false" value="../../common"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include/pa&quot;"/>
 								</option>
