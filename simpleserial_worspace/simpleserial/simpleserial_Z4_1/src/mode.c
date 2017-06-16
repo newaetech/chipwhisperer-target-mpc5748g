@@ -151,7 +151,7 @@ void XTAL_16MHz(void)
   while(MC_ME.GS.B.S_MTRANS == 1);      /* Wait for mode transition complete */
 }
 
-void system16mhz(void)
+void system16mhz(unsigned int turn_on_s40)
 {
   /* enable all modes, enable all peripherals */
   MC_ME.ME.R        = 0x000005FF;
@@ -172,7 +172,11 @@ void system16mhz(void)
 
   /* S40 - max 40 MHz */
   MC_CGM.SC_DC2.B.DIV = 3;  /* Freq = sysclk / (3+1) = sysclk/4 */
-  MC_CGM.SC_DC2.B.DE  = 1;  /* Enable divided clock */
+  if (turn_on_s40){
+	  MC_CGM.SC_DC2.B.DE  = 1;  /* Enable divided clock */
+  } else {
+	  MC_CGM.SC_DC2.B.DE = 0;
+  }
 
   /* F40 - max 40 MHz (for PIT, etc.) - use default values */
 

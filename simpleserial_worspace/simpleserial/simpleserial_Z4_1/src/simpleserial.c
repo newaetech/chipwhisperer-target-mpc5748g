@@ -24,6 +24,8 @@ static int num_commands = 0;
 #define SS_VER_1_0 0
 #define SS_VER_1_1 1
 
+#define SS_VER SS_VER_1_1
+
 static char hex_lookup[16] =
 {
 	'0', '1', '2', '3', '4', '5', '6', '7',
