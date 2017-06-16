@@ -288,8 +288,8 @@ uint8_t glitch_example(uint8_t * data)
 	while(1){
 	totalcnt = 0;
 	TRIG_HIGH();
-	for(i = 0; i < 100; i++){
-		for(j = 0; j < 100; j++){
+	for(i = 0; i < 500; i++){
+		for(j = 0; j < 500; j++){
 			totalcnt++;
 		}
 	}
