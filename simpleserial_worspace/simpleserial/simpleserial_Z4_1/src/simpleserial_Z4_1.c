@@ -35,6 +35,8 @@
 #include "sharedmem.h"
 #include "simpleserial.h"
 
+#include "tinyaes128.h"
+
 #define SUPPORT_HSM 1
 
 #ifndef SUPPORT_HSM
@@ -103,19 +105,29 @@ int __write_console(__file_handle handle, unsigned char * buffer, size_t * count
 
 /************************* Simpleserial Commands / Functions *****************/
 
+#define MODULE_INVALID   0x00
 #define MODULE_SWAES     0x80
 #define MODULE_SWAESHSM  0x40
 #define MODULE_HWAES     0x20
 #define MODULE_XOR       0x10
-uint8_t enc_module = MODULE_SWAES;
+uint8_t enc_module = MODULE_INVALID;
 
 uint8_t pwgroup;
 
 uint8_t set_module(uint8_t* mod)
 {
-	enc_module = mod[0];
-	if ((enc_module & 0xF0) == MODULE_HWAES){
-		hsm_setkeyidx(enc_module & 0x0F);
+	enc_module = mod[0] & 0xF0;
+	if (enc_module == MODULE_HWAES){
+		hsm_setkeyidx(mod[0] & 0x0F);
+	} else if (enc_module == MODULE_SWAES){
+		;
+	} else if (enc_module == MODULE_SWAESHSM){
+		;
+	} else if (enc_module == MODULE_XOR){
+		;
+	} else {
+		printf("DEBUG: INVALID MODULE %02x", mod[0]);
+		return 0xff;
 	}
 
 	return 0;
@@ -126,8 +138,7 @@ uint8_t get_key(uint8_t* k)
 	if (enc_module == MODULE_HWAES){
 		hsm_setkey(k);
 	} else if (enc_module == MODULE_SWAES){
-		//todo
-		;
+		AES128_ECB_tinyaes_setkey(k);
 	} else if (enc_module == MODULE_SWAESHSM){
 		//todo
 		;
@@ -135,6 +146,8 @@ uint8_t get_key(uint8_t* k)
 	else if (enc_module == MODULE_XOR){
 		//todo
 		;
+	} else {
+		return 0xFF;
 	}
 	return 0x00;
 }
@@ -151,7 +164,11 @@ uint8_t get_pt(uint8_t* pt)
 		printf("HSM NOT SUPPORTED\n");
 #endif
 	} else if (enc_module == MODULE_SWAES){
+#if SUPPORT_HSM
+		hsm_release_gpio();
+#endif
 		TRIG_HIGH();
+		AES128_ECB_tinyaes_crypto(pt);
 		TRIG_LOW();
 	} else if (enc_module == MODULE_SWAESHSM){
 #if SUPPORT_HSM
@@ -171,8 +188,6 @@ uint8_t get_pt(uint8_t* pt)
 		TRIG_LOW();
 	}
 
-	;//aes_indep_enc(pt); /* encrypting the data block */
-	TRIG_LOW();
 	simpleserial_put('r', 16, pt);
 	return 0x00;
 }
@@ -186,7 +201,7 @@ uint8_t set_pwlock(uint8_t * status)
 
 uint8_t set_pwgroup(uint8_t * group)
 {
-	//Uncomment this to print the lifecycle
+	//Uncomment this to print the lifecycle, useful for debug to check what lifecycle we are set to
 	//printf("Lifecycle from LCSTAT: %u\n", PASS.LCSTAT.B.LIFE);
 
 	if (group[0] < 4){
@@ -265,6 +280,28 @@ uint8_t core_example(uint8_t * data)
 	return 0;
 }
 
+uint8_t glitch_example(uint8_t * data)
+{
+	printf("Entering infinite glitch loop...\n");
+
+	volatile unsigned int i,j,totalcnt;
+	while(1){
+	totalcnt = 0;
+	TRIG_HIGH();
+	for(i = 0; i < 100; i++){
+		for(j = 0; j < 100; j++){
+			totalcnt++;
+		}
+	}
+	TRIG_LOW();
+	printf("%ud %ud %ud\n", i, j, totalcnt);
+	}
+
+	printf("You broke out of the loop!\n");
+
+	return 0x00;
+}
+
 /************************************ Main ***********************************/
 int main(void)
 {
@@ -310,7 +347,9 @@ int main(void)
 
 
 	//External clock in = 16 MHz, we will run CPU from that to make SCA easier
-	system16mhz();
+	//You can turn on or off the S40 clock domain - it's needed for the PASS module, but not for
+	//anything else we use for demos. You can turn off to possibly reduce noise.
+	system16mhz(1);
 
 	// If we get here - core is probably OK!
 	LED_ON(LED_CLKOK);
@@ -340,16 +379,16 @@ int main(void)
 	uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
 
 #if SUPPORT_HSM
-	puts("Loading HSM functions into RAM\n");
+	puts("Loading HSM functions into RAM");
 	//hsm_loadfuncions();
 
 	puts("Checking for HSM...");
 	if (hsm_check()){
-		puts("Found\n");
+		puts("Found");
 		LED_ON(LED_HSM);
 	} else {
 		LED_OFF(LED_HSM);
-		puts("NOT found\n");
+		puts("NOT found");
 	}
 #endif
 
@@ -359,9 +398,10 @@ int main(void)
     simpleserial_addcmd('p', 16,  get_pt);
     simpleserial_addcmd('q',  32,  set_pw);
     simpleserial_addcmd('h', 1, set_module);
-    simpleserial_addcmd('g', 1, set_pwgroup);
+    simpleserial_addcmd('w', 1, set_pwgroup);
     simpleserial_addcmd('l', 0, set_pwlock);
-    simpleserial_addcmd('w', 4, core_example);
+    simpleserial_addcmd('j', 4, core_example);
+    simpleserial_addcmd('g', 0, glitch_example);
 
 
 	/*
@@ -418,7 +458,7 @@ int main(void)
 		}
 
 		//Wait for character
-		if(checkchar() == 1){
+		if(checkchar()){
 			simpleserial_get();
 		}
 	}

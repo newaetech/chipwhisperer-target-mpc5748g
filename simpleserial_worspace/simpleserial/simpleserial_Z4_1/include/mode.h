@@ -14,7 +14,7 @@ void PLL_160MHz (void);
 void system160mhz (void);
 void PLL_40MHz (void);
 void system40mhz (void);
-void system16mhz (void);
+void system16mhz(unsigned int turn_on_s40);
 void enter_STOP_mode (void);
 
 #endif /* MODE_H_ */
