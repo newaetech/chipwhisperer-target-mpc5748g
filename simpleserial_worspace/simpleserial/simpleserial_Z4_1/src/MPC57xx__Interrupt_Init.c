@@ -172,3 +172,45 @@ void xcptn_xmpl(void) {
 }
 
 
+/******************** Machine Check Interrupt ***************************/
+void IVOR1_Exception_Handler(void)
+{
+	uint32_t mcsr;
+
+	mcsr = mfspr(572);
+
+	printf("Machine Check Exception: %x\n", mcsr);
+
+	if (mcsr & (1<<1)) printf("   IC_DPERR\n");
+	if (mcsr & (1<<3)) printf("   DC_DPERR\n");
+	if (mcsr & (1<<4)) printf("   EXCP_ERR\n");
+	if (mcsr & (1<<5)) printf("   IC_TPERR\n");
+	if (mcsr & (1<<6)) printf("   DC_TPERR\n");
+	if (mcsr & (1<<7)) printf("   IC_LKERR\n");
+	if (mcsr & (1<<8)) printf("   DC_LKERR\n");
+	if (mcsr & (1<<11)) printf("   NMI\n");
+	if (mcsr & (1<<12)) printf("   MAV\n");
+	if (mcsr & (1<<13)) printf("   MEA\n");
+	if (mcsr & (1<<14)) printf("   U\n");
+	if (mcsr & (1<<15)) printf("   IF\n");
+	if (mcsr & (1<<16)) printf("   LD\n");
+	if (mcsr & (1<<17)) printf("   ST\n");
+	if (mcsr & (1<<18)) printf("   G\n");
+	if (mcsr & (1<<21)) printf("   STACK_ERR\n");
+	if (mcsr & (1<<22)) printf("   IMEM_PERR\n");
+	if (mcsr & (1<<23)) printf("   DMEM_RDPERR\n");
+	if (mcsr & (1<<24)) printf("   DMEM_WRPERR\n");
+	if (mcsr & (1<<27)) printf("   BUS_IREER\n");
+	if (mcsr & (1<<28)) printf("   BUS_DRERR\n");
+	if (mcsr & (1<<29)) printf("   BUS_WRERR\n");
+	if (mcsr & (1<<30)) printf("   BUS_WRDSI\n");
+
+	printf(" MCSRR0: %xh\n", mfspr(570));
+	printf(" MCSRR1: %xh\n", mfspr(571));
+
+
+	while(1);
+
+	/* If you dared to try and return, you would clear any flags set */
+	mtspr(572, mcsr);
+}

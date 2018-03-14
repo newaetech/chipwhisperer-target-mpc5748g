@@ -157,6 +157,7 @@ ROMCPYEND:
 		e_or2i	r6,0x1000
 		mtmsr	r6
 
+
 #if defined(I_CACHE)
 ;#****************** Invalidate and Enable the Instruction cache **************
 __icache_cfg:

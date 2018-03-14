@@ -31,6 +31,8 @@ PPCASMF( .globl IVOR14_Vector );
 PPCASMF( .globl IVOR15_Vector );
 
 PPCASMF( .extern     IVOR4_Handler);
+PPCASMF( .extern     IVOR1_Handler);
+
 PPCASMF2( .section    .core_exceptions_table, "ax" );
 
 PPCASMF(.align 4);
@@ -40,7 +42,9 @@ PPCASMF( e_b   IVOR0_Vector );
 
 PPCASMF(.align 4);
 PPCASMF( IVOR1_Vector: );
-PPCASMF( e_b   IVOR1_Vector );
+//PPCASMF( e_b   IVOR1_Vector );
+PPCASMF( e_b   IVOR1_Handler );
+
 
 PPCASMF(.align 4);
 PPCASMF( IVOR2_Vector: );

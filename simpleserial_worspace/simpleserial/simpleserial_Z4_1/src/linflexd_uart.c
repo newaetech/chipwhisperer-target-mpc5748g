@@ -87,7 +87,7 @@ void initLINFlexD_2 ( unsigned int MegaHertz, unsigned int BaudRate ) {
 }
 /*****************************************************************************/
 
-char message[] = "Welcome to MPC5748G! ";
+char message[] = "Welcome to MPC5748G!";
 
 void testLINFlexD_2( void )  {     /* Display message to terminal */
   int i, size;

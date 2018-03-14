@@ -201,9 +201,6 @@ uint8_t set_pwlock(uint8_t * status)
 
 uint8_t set_pwgroup(uint8_t * group)
 {
-	//Uncomment this to print the lifecycle, useful for debug to check what lifecycle we are set to
-	//printf("Lifecycle from LCSTAT: %u\n", PASS.LCSTAT.B.LIFE);
-
 	if (group[0] < 4){
 		pwgroup = group[0];
 		return 0;
@@ -280,27 +277,121 @@ uint8_t core_example(uint8_t * data)
 	return 0;
 }
 
-uint8_t glitch_example(uint8_t * data)
+uint8_t glitch_example2(uint8_t * data)
 {
+#if SUPPORT_HSM
+			hsm_release_gpio();
+#endif
 	printf("Entering infinite glitch loop...\n");
-
+	unsigned int lcnt = 0;
 	volatile unsigned int i,j,totalcnt;
 	while(1){
 	totalcnt = 0;
+	unsigned int test = 0;
+
 	TRIG_HIGH();
 	for(i = 0; i < 500; i++){
 		for(j = 0; j < 500; j++){
 			totalcnt++;
+			test++;
 		}
+		TRIG_LOW();
+
+		if (j != 500){
+			printf("GLITCH 1\n");
+			TRIG_LOW();
+			return 0x00;
+		}
+
+		if ((i % 50) == 0){
+			TRIG_HIGH();
+		}
+
+	}
+	if ((i != 500) || (totalcnt != 250000) || (test != 250000)) {
+		printf("GLITCH 2\n");
+		printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+		TRIG_LOW();
+		return 0x00;
 	}
 	TRIG_LOW();
-	printf("%ud %ud %ud\n", i, j, totalcnt);
+	//printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
 	}
 
 	printf("You broke out of the loop!\n");
 
 	return 0x00;
 }
+
+
+uint8_t glitch_example(uint8_t * data)
+{
+#if SUPPORT_HSM
+			hsm_release_gpio();
+#endif
+	printf("Entering infinite glitch loop...\n");
+	unsigned int lcnt = 0;
+	unsigned int i,j,totalcnt;
+	while(1){
+	totalcnt = 0;
+	unsigned int test = 0;
+
+	TRIG_HIGH();
+	for(i = 0; i < 1000; i++){
+		for(j = 0; j < 1000; j++){
+			totalcnt++;
+			test++;
+		}
+		TRIG_LOW();
+
+		if ((i % 50) == 0){
+			TRIG_HIGH();
+		}
+
+	}
+	printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+	TRIG_LOW();
+	//printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+	}
+
+	printf("You broke out of the loop!\n");
+
+	return 0x00;
+}
+
+
+void read_flash(void)
+{
+#if SUPPORT_HSM
+			hsm_release_gpio();
+#endif
+
+	uint32_t i = 0;
+
+	while(1){
+		i++;
+		TRIG_HIGH();
+		uint32_t * rv = (uint32_t *)(0x00400200);
+		volatile uint32_t val = *rv;
+		if (val != 0x55AA50AF) {
+			printf("GLITCH: %x", (unsigned int)val);
+		}
+		TRIG_LOW();
+		if ((i % 100000) == 0) {
+			printf("%x\n", (unsigned int)val);
+		}
+	}
+
+}
+
+const char  * lcstatstring[] = { "Failure Analysis",
+		                        "Reserved",
+								"OEM Production",
+								"Customer Delivery",
+								"Reserved",
+								"Reserved",
+								"Freescale Production",
+								"In Field" };
 
 /************************************ Main ***********************************/
 int main(void)
@@ -349,6 +440,7 @@ int main(void)
 	//External clock in = 16 MHz, we will run CPU from that to make SCA easier
 	//You can turn on or off the S40 clock domain - it's needed for the PASS module, but not for
 	//anything else we use for demos. You can turn off to possibly reduce noise.
+	//IF you turn off - be sure to remove talking to PASS module!!!
 	system16mhz(1);
 
 	// If we get here - core is probably OK!
@@ -358,8 +450,13 @@ int main(void)
 	//clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
 
 	initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
-	testLINFlexD_0();			/* Display a message on the terminal */
 
+	printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
+	printf(" See http://cwdocs.com/mp57 for documentation\n");
+	printf(" Device information:\n");
+	printf("   Lifecycle from LCSTAT: %u (%s)\n", PASS.LCSTAT.B.LIFE, lcstatstring[PASS.LCSTAT.B.LIFE]);
+	printf("   Firmware HSM support: %s\n", SUPPORT_HSM ? "enabled":"disabled");
+	//printf("   JTAG Password: ");
 
 	//We can use some of the spare I/O if we want, here is HDR5 for example being set high
 	SIUL2.MSCR[PH5].B.OBE = 1;
@@ -379,10 +476,7 @@ int main(void)
 	uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
 
 #if SUPPORT_HSM
-	puts("Loading HSM functions into RAM");
-	//hsm_loadfuncions();
-
-	puts("Checking for HSM...");
+	printf("Checking for HSM... ");
 	if (hsm_check()){
 		puts("Found");
 		LED_ON(LED_HSM);
@@ -402,7 +496,6 @@ int main(void)
     simpleserial_addcmd('l', 0, set_pwlock);
     simpleserial_addcmd('j', 4, core_example);
     simpleserial_addcmd('g', 0, glitch_example);
-
 
 	/*
 	 * Basic application has two modes: CAN and UART.
@@ -490,3 +583,4 @@ int main(void)
 /********************  End of Main ***************************************/
 
 
+/******************** Machine Check Exception ***************************/
