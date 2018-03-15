@@ -18,7 +18,8 @@ MEMORY
     cpu2_reset_vec : org = 0x00FA0000+0x04,   len = 0x4      
         
     m_text :	org = 0x1000000, len = 1856K  
-    m_data :	org = 0x40020000,   len = 128K
+    m_data :	org = 0x40020000,   len = 64K
+    m_reserved : org = 0x40020000 + 64K, len = 64K
     shared :    org = 0x40080000, len = 64k
 }
 

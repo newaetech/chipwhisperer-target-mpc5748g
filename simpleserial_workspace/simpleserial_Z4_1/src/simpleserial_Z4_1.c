@@ -50,6 +50,19 @@
 #define KEY_VALUE1 0x5AF0ul
 #define KEY_VALUE2 0xA50Ful
 
+typedef void(*ram_func)(void);
+typedef void(*aes_func)(uint8_t *);
+
+typedef union {
+     uint8_t u8[4];
+     uint32_t u32;
+     uint8_t *p8;
+     uint32_t *p32;
+     ram_func f;
+} recv_sram ;
+
+aes_func CUSTOM_KEY_FUNC = 0x40030000;
+aes_func CUSTOM_ENC_FUNC = 0x40030200;
 
 extern void xcptn_xmpl(void);
 
@@ -69,38 +82,38 @@ __attribute__ ((section(".text")))
 /* putchar needed by simpleserial, pass-through to our function */
 void txchar(char c)
 {
-	txLINFlexD_0(c);
+     txLINFlexD_0(c);
 }
 
 /* getchar needed by simpleserial, pass-through to our function */
 char rxchar(void)
 {
-	return rxLINFlexD_0();
+     return rxLINFlexD_0();
 }
 
 /** Enable printf() - these are lazy routines to clip into EWL rather than use the
  *  correct callbacks. They work for now though. */
 int __read_console(__file_handle handle, unsigned char * buffer, size_t * count)
 {
-	return (int) __io_error;
+     return (int) __io_error;
 }
 
 
 int __close_console(__file_handle handle)
 {
-	return (int)__no_io_error;
+     return (int)__no_io_error;
 }
 
 int __write_console(__file_handle handle, unsigned char * buffer, size_t * count)
 {
-	int tosend = *count;
+     int tosend = *count;
 
-	while(tosend){
-		txchar(*(buffer++));
-		tosend--;
-	}
+     while(tosend){
+          txchar(*(buffer++));
+          tosend--;
+     }
 
-	return (int)__no_io_error;
+     return (int)__no_io_error;
 }
 
 /************************* Simpleserial Commands / Functions *****************/
@@ -110,103 +123,231 @@ int __write_console(__file_handle handle, unsigned char * buffer, size_t * count
 #define MODULE_SWAESHSM  0x40
 #define MODULE_HWAES     0x20
 #define MODULE_XOR       0x10
-uint8_t enc_module = MODULE_INVALID;
+#define MODULE_MBED		 0x01
+#define MODULE_CUSTOM	 0x02
+uint8_t enc_module = MODULE_SWAES;
 
 uint8_t pwgroup;
 
+
+uint8_t ascii_to_hex(char ch)
+{
+     uint8_t val;
+     if (ch >= '0' && ch <= '9') {
+          return ch - 48;
+     } else if (ch >= 'A' && ch <= 'F') {
+          return ch - 55;
+     } else if (ch >= 'a' && ch <= 'f') {
+          return ch - 87;
+     }
+     return 0;
+}
+
+uint32_t ascii_to_u32(char text[8])
+{
+     uint32_t val = 0;
+     for (int i = 0; i < 8; i++) {
+          val |= ascii_to_hex(text[i]) << (4 * (7 - i));
+     }
+     return val;
+}
+
+uint8_t ascii_to_u8(char text[2])
+{
+     uint8_t val = 0;
+     for (int i = 0; i < 2;i ++) {
+          val |= ascii_to_hex(text[i]) << (4 * (1 - i));
+     }
+     return val;
+}
+
+uint32_t uart_get_u32(void)
+{
+     char buf[8];
+     for (int i = 0; i < 8; i++) {
+          buf[i] = rxchar();
+     }
+     return ascii_to_u32(buf);
+}
+
+
+uint8_t monitor_mode(uint8_t *k)
+{
+     printf("You are now in monitor mode\n");
+     char ch = 0;
+     while (ch != 'q') {
+          printf("Commands:\n"
+                 "\tu: Upload bin to SRAM\n"
+                 "\td: Dump SRAM\n"
+                 "\te: Execute SRAM\n"
+                 "\tw: Write SRAM\n"
+                 "\tr: Read SRAM\n"
+                 "\tq: Quit\n");
+          ch = rxchar();
+
+          if (ch == 'u') {
+               recv_sram addr;
+               recv_sram len;
+
+               printf("32bit memory location to load to (ascii hex): \n");
+               addr.u32 = uart_get_u32();
+               printf("Got %x\n", addr.u32);
+
+               printf("32bit length of bin file (ascii hex): \n");
+               len.u32 = uart_get_u32();
+               printf("Got %x\n", len.u32);
+
+               printf("Send bin: \n");
+               for (int i = 0; i < len.u32; i++) {
+                    addr.p8[i] = rxchar();
+               }
+          } else if (ch == 'd') {
+               recv_sram addr;
+               recv_sram len;
+
+               printf("32bit memory location to load (ascii hex): \n");
+               addr.u32 = uart_get_u32();
+               printf("Got %x\n", addr.u32);
+
+               printf("32bit length of memory (ascii hex): \n");
+               len.u32 = uart_get_u32();
+               printf("Got %x\n", len.u32);
+
+               for (int i = 0; i < len.u32; i++) {
+                    txchar(addr.p8[i]);
+               }
+          } else if (ch == 'e') {
+               recv_sram addr;
+
+               printf("Specify 32bit memory location to execute (ascii hex): \n");
+               addr.u32 = uart_get_u32();
+
+               printf("Executing memory location %x\n", addr.u32);
+               addr.f();
+          } else if (ch == 'w') {
+               recv_sram addr;
+               recv_sram val;
+
+               printf("Specify 32bit memory location to write to (ascii hex): \n");
+               addr.u32 = uart_get_u32();
+
+               printf("Specify 32bit value to write (ascii hex): \n");
+               val.u32 = uart_get_u32();
+
+               printf("Writing %x to %x\n", val.u32, addr.u32);
+               *addr.p32 = val.u32;
+          } else if (ch == 'r') {
+               recv_sram addr;
+
+               printf("Specify 32bit memory location to read from (ascii hex): \n");
+               addr.u32 = uart_get_u32();
+               printf("Got %x\n", addr.u32);
+
+               uint32_t val = *addr.p32;
+               printf("Memory at %x = %x\n", addr.u32, val);
+          }
+     }
+
+     return 0;
+}
+
 uint8_t set_module(uint8_t* mod)
 {
-	enc_module = mod[0] & 0xF0;
-	if (enc_module == MODULE_HWAES){
-		hsm_setkeyidx(mod[0] & 0x0F);
-	} else if (enc_module == MODULE_SWAES){
-		;
-	} else if (enc_module == MODULE_SWAESHSM){
-		;
-	} else if (enc_module == MODULE_XOR){
-		;
-	} else {
-		printf("DEBUG: INVALID MODULE %02x", mod[0]);
-		return 0xff;
-	}
+     enc_module = mod[0]; //& 0xF0;
+     if (enc_module == MODULE_HWAES){
+          hsm_setkeyidx(mod[0] & 0x0F);
+     } else if (enc_module == MODULE_SWAES){
+          ;
+     } else if (enc_module == MODULE_SWAESHSM){
+          ;
+     } else if (enc_module == MODULE_XOR){
+          ;
+     } else {
+          printf("DEBUG: INVALID MODULE %02x", mod[0]);
+          return 0xff;
+     }
 
-	return 0;
+     return 0;
 }
 
 uint8_t get_key(uint8_t* k)
 {
-	if (enc_module == MODULE_HWAES){
-		hsm_setkey(k);
-	} else if (enc_module == MODULE_SWAES){
-		AES128_ECB_tinyaes_setkey(k);
-	} else if (enc_module == MODULE_SWAESHSM){
-		//todo
-		;
-	}
-	else if (enc_module == MODULE_XOR){
-		//todo
-		;
-	} else {
-		return 0xFF;
-	}
-	return 0x00;
+     if (enc_module == MODULE_HWAES){
+          hsm_setkey(k);
+     } else if (enc_module == MODULE_SWAES){
+          AES128_ECB_tinyaes_setkey(k);
+     } else if (enc_module == MODULE_SWAESHSM){
+          //todo
+          ;
+     }
+     else if (enc_module == MODULE_XOR){
+          //todo
+          ;
+     } else if (enc_module == MODULE_CUSTOM) {
+          CUSTOM_KEY_FUNC(k);
+     } else {
+          return 0xFF;
+     }
+     return 0x00;
 }
 
 uint8_t get_pt(uint8_t* pt)
 {
-	if (enc_module == MODULE_HWAES){
+     if (enc_module == MODULE_HWAES){
 #if SUPPORT_HSM
-		hsm_sendin(pt);
-		hsm_start();
-		hsm_wait();
-		hsm_readout(pt);
+          hsm_sendin(pt);
+          hsm_start();
+          hsm_wait();
+          hsm_readout(pt);
 #else
-		printf("HSM NOT SUPPORTED\n");
+          printf("HSM NOT SUPPORTED\n");
 #endif
-	} else if (enc_module == MODULE_SWAES){
+     } else if (enc_module == MODULE_SWAES){
 #if SUPPORT_HSM
-		hsm_release_gpio();
+          hsm_release_gpio();
 #endif
-		TRIG_HIGH();
-		AES128_ECB_tinyaes_crypto(pt);
-		TRIG_LOW();
-	} else if (enc_module == MODULE_SWAESHSM){
+          TRIG_HIGH();
+          AES128_ECB_tinyaes_crypto(pt);
+          TRIG_LOW();
+     } else if (enc_module == MODULE_SWAESHSM){
 #if SUPPORT_HSM
-		hsm_sendin(pt);
-		hsm_start();
-		hsm_wait();
-		hsm_readout(pt);
+          hsm_sendin(pt);
+          hsm_start();
+          hsm_wait();
+          hsm_readout(pt);
 #else
-		printf("HSM NOT SUPPORTED\n");
+          printf("HSM NOT SUPPORTED\n");
 #endif
-	}
-	else if (enc_module == MODULE_XOR){
+     }
+     else if (enc_module == MODULE_XOR){
 #if SUPPORT_HSM
-		hsm_release_gpio();
+          hsm_release_gpio();
 #endif
-		TRIG_HIGH();
-		TRIG_LOW();
-	}
+          TRIG_HIGH();
+          TRIG_LOW();
+     } else if (enc_module == MODULE_CUSTOM) {
+          CUSTOM_ENC_FUNC(pt);
+     }
 
-	simpleserial_put('r', 16, pt);
-	return 0x00;
+     simpleserial_put('r', 16, pt);
+     return 0x00;
 }
 
 uint8_t set_pwlock(uint8_t * status)
 {
-	PASS.PG[pwgroup].LOCK3.B.PGL = 1;
-	printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
-	return 0x00;
+     PASS.PG[pwgroup].LOCK3.B.PGL = 1;
+     printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
+     return 0x00;
 }
 
 uint8_t set_pwgroup(uint8_t * group)
 {
-	if (group[0] < 4){
-		pwgroup = group[0];
-		return 0;
-	} else {
-		return 1;
-	}
+     if (group[0] < 4){
+          pwgroup = group[0];
+          return 0;
+     } else {
+          return 1;
+     }
 }
 
 /***
@@ -215,31 +356,31 @@ uint8_t set_pwgroup(uint8_t * group)
  */
 uint8_t set_pw(uint8_t * pw)
 {
-	int i;
+     int i;
 #if SUPPORT_HSM
-	hsm_release_gpio();
+     hsm_release_gpio();
 #endif
 
-	PASS.CHSEL.B.GRP = pwgroup;
+     PASS.CHSEL.B.GRP = pwgroup;
 
-	TRIG_HIGH();
+     TRIG_HIGH();
 
-	PASS.CIN[0].R = *((uint32_t *)pw + 0);
-	PASS.CIN[1].R = *((uint32_t *)pw + 1);
-	PASS.CIN[2].R = *((uint32_t *)pw + 2);
-	PASS.CIN[3].R = *((uint32_t *)pw + 3);
-	PASS.CIN[4].R = *((uint32_t *)pw + 4);
-	PASS.CIN[5].R = *((uint32_t *)pw + 5);
-	PASS.CIN[6].R = *((uint32_t *)pw + 6);
-	PASS.CIN[7].R = *((uint32_t *)pw + 7);
+     PASS.CIN[0].R = *((uint32_t *)pw + 0);
+     PASS.CIN[1].R = *((uint32_t *)pw + 1);
+     PASS.CIN[2].R = *((uint32_t *)pw + 2);
+     PASS.CIN[3].R = *((uint32_t *)pw + 3);
+     PASS.CIN[4].R = *((uint32_t *)pw + 4);
+     PASS.CIN[5].R = *((uint32_t *)pw + 5);
+     PASS.CIN[6].R = *((uint32_t *)pw + 6);
+     PASS.CIN[7].R = *((uint32_t *)pw + 7);
 
-	//Some low-noise time for comparison before setting trigger low
-	for(i = 0; i < 16; i++);
+     //Some low-noise time for comparison before setting trigger low
+     for(i = 0; i < 16; i++);
 
-	TRIG_LOW();
-	printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
+     TRIG_LOW();
+     printf("r%02x %08x\n", pwgroup, (unsigned int)PASS.PG[pwgroup].LOCK3.R);
 
-	return pwgroup;
+     return pwgroup;
 }
 
 /***
@@ -249,335 +390,354 @@ uint8_t set_pw(uint8_t * pw)
  */
 uint8_t core_example(uint8_t * data)
 {
-	uint8_t status;
+     uint8_t status;
 
-	/* Wait for previous processing to be done */
-	status = CORE0_LOCK;
-	while(status != GATE_UNLOCK){
-		status = Get_Gate_status(GATE_0);
-	}
+     /* Wait for previous processing to be done */
+     status = CORE0_LOCK;
+     while(status != GATE_UNLOCK){
+          status = Get_Gate_status(GATE_0);
+     }
 
-	/* Write shared resource */
-	sharedram_uint32[0] = 0xBAADBEEF;
+     /* Write shared resource */
+     sharedram_uint32[0] = 0xBAADBEEF;
 
-	printf("Waiting on CORE1, sent %08x\n", (unsigned int)sharedram_uint32[0]);
+     printf("Waiting on CORE1, sent %08x\n", (unsigned int)sharedram_uint32[0]);
 
-	/* Lock gate, this tells other core we are done & they can read data */
-	while(status != CORE0_LOCK){
-		status = Lock_Gate(GATE_0);
-	}
+     /* Lock gate, this tells other core we are done & they can read data */
+     while(status != CORE0_LOCK){
+          status = Lock_Gate(GATE_0);
+     }
 
-	/* Wait for other core to reset this gate, which means they are done */
-	while(status == CORE0_LOCK){
-		status = Get_Gate_status(GATE_0);
-	}
+     /* Wait for other core to reset this gate, which means they are done */
+     while(status == CORE0_LOCK){
+          status = Get_Gate_status(GATE_0);
+     }
 
-	printf("Doneski, CORE1 sends %08x\n", (unsigned int)sharedram_uint32[0]);
+     printf("Doneski, CORE1 sends %08x\n", (unsigned int)sharedram_uint32[0]);
 
-	return 0;
-}
-
-uint8_t glitch_example2(uint8_t * data)
-{
-#if SUPPORT_HSM
-			hsm_release_gpio();
-#endif
-	printf("Entering infinite glitch loop...\n");
-	unsigned int lcnt = 0;
-	volatile unsigned int i,j,totalcnt;
-	while(1){
-	totalcnt = 0;
-	unsigned int test = 0;
-
-	TRIG_HIGH();
-	for(i = 0; i < 500; i++){
-		for(j = 0; j < 500; j++){
-			totalcnt++;
-			test++;
-		}
-		TRIG_LOW();
-
-		if (j != 500){
-			printf("GLITCH 1\n");
-			TRIG_LOW();
-			return 0x00;
-		}
-
-		if ((i % 50) == 0){
-			TRIG_HIGH();
-		}
-
-	}
-	if ((i != 500) || (totalcnt != 250000) || (test != 250000)) {
-		printf("GLITCH 2\n");
-		printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
-		TRIG_LOW();
-		return 0x00;
-	}
-	TRIG_LOW();
-	//printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
-	}
-
-	printf("You broke out of the loop!\n");
-
-	return 0x00;
+     return 0;
 }
 
 
-uint8_t glitch_example(uint8_t * data)
+uint8_t glitch_example2()
 {
 #if SUPPORT_HSM
-			hsm_release_gpio();
+     hsm_release_gpio();
 #endif
-	printf("Entering infinite glitch loop...\n");
-	unsigned int lcnt = 0;
-	unsigned int i,j,totalcnt;
-	while(1){
-	totalcnt = 0;
-	unsigned int test = 0;
+     printf("Entering infinite glitch loop...\n");
+     unsigned int lcnt = 0;
+     volatile unsigned int i,j,totalcnt;
+     while(1){
+          totalcnt = 0;
+          unsigned int test = 0;
 
-	TRIG_HIGH();
-	for(i = 0; i < 1000; i++){
-		for(j = 0; j < 1000; j++){
-			totalcnt++;
-			test++;
-		}
-		TRIG_LOW();
+          TRIG_HIGH();
+          for(i = 0; i < 500; i++){
+               for(j = 0; j < 500; j++){
+                    totalcnt++;
+                    test++;
+               }
+               TRIG_LOW();
 
-		if ((i % 50) == 0){
-			TRIG_HIGH();
-		}
+               if (j != 500){
+                    printf("GLITCH 1\n");
+                    TRIG_LOW();
+                    return 0x00;
+               }
 
-	}
-	printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
-	TRIG_LOW();
-	//printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
-	}
+               if ((i % 50) == 0){
+                    TRIG_HIGH();
+               }
 
-	printf("You broke out of the loop!\n");
+          }
+          if ((i != 500) || (totalcnt != 250000) || (test != 250000)) {
+               printf("GLITCH 2\n");
+               printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+               TRIG_LOW();
+               return 0x00;
+          }
+          TRIG_LOW();
+          //printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+     }
 
-	return 0x00;
+     printf("You broke out of the loop!\n");
+
+     return 0x00;
+}
+
+
+uint8_t glitch_example()
+{
+#if SUPPORT_HSM
+     hsm_release_gpio();
+#endif
+     printf("Entering infinite glitch loop...\n");
+     unsigned int lcnt = 0;
+     unsigned int i,j,totalcnt;
+     while(1){
+          totalcnt = 0;
+          unsigned int test = 0;
+
+          TRIG_HIGH();
+          for(i = 0; i < 1000; i++){
+               for(j = 0; j < 1000; j++){
+                    totalcnt++;
+                    test++;
+               }
+               TRIG_LOW();
+
+               if ((i % 50) == 0){
+                    TRIG_HIGH();
+               }
+
+          }
+          printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+          TRIG_LOW();
+          //printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
+     }
+
+     printf("You broke out of the loop!\n");
+
+     return 0x00;
 }
 
 
 void read_flash(void)
 {
 #if SUPPORT_HSM
-			hsm_release_gpio();
+     hsm_release_gpio();
 #endif
 
-	uint32_t i = 0;
+     uint32_t i = 0;
 
-	while(1){
-		i++;
-		TRIG_HIGH();
-		uint32_t * rv = (uint32_t *)(0x00400200);
-		volatile uint32_t val = *rv;
-		if (val != 0x55AA50AF) {
-			printf("GLITCH: %x", (unsigned int)val);
-		}
-		TRIG_LOW();
-		if ((i % 100000) == 0) {
-			printf("%x\n", (unsigned int)val);
-		}
-	}
+     while(1){
+          i++;
+          TRIG_HIGH();
+          uint32_t * rv = (uint32_t *)(0x00400200);
+          volatile uint32_t val = *rv;
+          if (val != 0x55AA50AF) {
+               printf("GLITCH: %x", (unsigned int)val);
+          }
+          TRIG_LOW();
+          if ((i % 100000) == 0) {
+               printf("%x\n", (unsigned int)val);
+          }
+     }
+}
 
+uint8_t glitch_call(uint8_t *data)
+{
+     printf("Call glitch %hhu\n", *data);
+     switch (*data) {
+     case 1:
+          glitch_example();
+          break;
+     case 2:
+          glitch_example2();
+          break;
+     case 3:
+          read_flash();
+          break;
+
+     }
+     return 0;
 }
 
 const char  * lcstatstring[] = { "Failure Analysis",
-		                        "Reserved",
-								"OEM Production",
-								"Customer Delivery",
-								"Reserved",
-								"Reserved",
-								"Freescale Production",
-								"In Field" };
+                                 "Reserved",
+                                 "OEM Production",
+                                 "Customer Delivery",
+                                 "Reserved",
+                                 "Reserved",
+                                 "Freescale Production",
+                                 "In Field" };
 
 /************************************ Main ***********************************/
 int main(void)
 {
-	uint32_t i;
+     uint32_t i;
 
-	/* Before any other stuff online - setup user I/O */
-	LED_SETUP(LED_CORE0);
-	LED_SETUP(LED_CLKOK);
-	LED_SETUP(LED_HSM);
+     /* Before any other stuff online - setup user I/O */
+     LED_SETUP(LED_CORE0);
+     LED_SETUP(LED_CLKOK);
+     LED_SETUP(LED_HSM);
 
-	LED_SETUP(LED_USER1);
-	LED_SETUP(LED_USER2);
-	LED_SETUP(LED_USER3);
+     LED_SETUP(LED_USER1);
+     LED_SETUP(LED_USER2);
+     LED_SETUP(LED_USER3);
 
-	TRIG_INIT();
+     TRIG_INIT();
 
-	//Show CORE0 is alive (even if clock switch will fail)
-	LED_ON(LED_CORE0);
+     //Show CORE0 is alive (even if clock switch will fail)
+     LED_ON(LED_CORE0);
 
-	//Turn on other cores (if in use) now
+     //Turn on other cores (if in use) now
 #if defined(DEBUG_SECONDARY_CORES)
-	uint32_t mctl = MC_ME.MCTL.R;
+     uint32_t mctl = MC_ME.MCTL.R;
 #if defined(TURN_ON_CPU1)
-	/* enable core 1 in all modes */
-	MC_ME.CCTL[2].R = 0x00FE;
-	/* Set Start address for core 1: Will reset and start */
-	MC_ME.CADDR[2].R = 0x11d0000 | 0x1;
+     /* enable core 1 in all modes */
+     MC_ME.CCTL[2].R = 0x00FE;
+     /* Set Start address for core 1: Will reset and start */
+     MC_ME.CADDR[2].R = 0x11d0000 | 0x1;
 #endif
 #if defined(TURN_ON_CPU2)
-	/* enable core 2 in all modes */
-	MC_ME.CCTL[3].R = 0x00FE;
-	/* Set Start address for core 2: Will reset and start */
-	MC_ME.CADDR[3].R = 0x13a0000 | 0x1;
+     /* enable core 2 in all modes */
+     MC_ME.CCTL[3].R = 0x00FE;
+     /* Set Start address for core 2: Will reset and start */
+     MC_ME.CADDR[3].R = 0x13a0000 | 0x1;
 #endif
-	MC_ME.MCTL.R = (mctl & 0xffff0000ul) | KEY_VALUE1;
-	MC_ME.MCTL.R =  mctl; /* key value 2 always from MCTL */
+     MC_ME.MCTL.R = (mctl & 0xffff0000ul) | KEY_VALUE1;
+     MC_ME.MCTL.R =  mctl; /* key value 2 always from MCTL */
 #endif /* defined(DEBUG_SECONDARY_CORES) */
 
-	sharedmem_init();
+     sharedmem_init();
 
 
-	xcptn_xmpl (); /* Configure and Enable Interrupts */
+     xcptn_xmpl (); /* Configure and Enable Interrupts */
 
 
-	//External clock in = 16 MHz, we will run CPU from that to make SCA easier
-	//You can turn on or off the S40 clock domain - it's needed for the PASS module, but not for
-	//anything else we use for demos. You can turn off to possibly reduce noise.
-	//IF you turn off - be sure to remove talking to PASS module!!!
-	system16mhz(1);
+     //External clock in = 16 MHz, we will run CPU from that to make SCA easier
+     //You can turn on or off the S40 clock domain - it's needed for the PASS module, but not for
+     //anything else we use for demos. You can turn off to possibly reduce noise.
+     //IF you turn off - be sure to remove talking to PASS module!!!
+     system16mhz(1);
 
-	// If we get here - core is probably OK!
-	LED_ON(LED_CLKOK);
+     // If we get here - core is probably OK!
+     LED_ON(LED_CLKOK);
 
-	//Optional - enable clock out (will increase noise so not on by default, not needed to our clkin anyway)
-	//clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
+     //Optional - enable clock out (will increase noise so not on by default, not needed to our clkin anyway)
+     //clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
 
-	initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
+     initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
 
-	printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
-	printf(" See http://cwdocs.com/mp57 for documentation\n");
-	printf(" Device information:\n");
-	printf("   Lifecycle from LCSTAT: %u (%s)\n", PASS.LCSTAT.B.LIFE, lcstatstring[PASS.LCSTAT.B.LIFE]);
-	printf("   Firmware HSM support: %s\n", SUPPORT_HSM ? "enabled":"disabled");
-	//printf("   JTAG Password: ");
+     printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
+     printf(" See http://cwdocs.com/mp57 for documentation\n");
+     printf(" Device information:\n");
+     printf("   Lifecycle from LCSTAT: %u (%s)\n", PASS.LCSTAT.B.LIFE, lcstatstring[PASS.LCSTAT.B.LIFE]);
+     printf("   Firmware HSM support: %s\n", SUPPORT_HSM ? "enabled":"disabled");
+     //printf("   JTAG Password: ");
 
-	//We can use some of the spare I/O if we want, here is HDR5 for example being set high
-	SIUL2.MSCR[PH5].B.OBE = 1;
-	SIUL2.GPDO[PH5].B.PDO_4n = 0;
+     //We can use some of the spare I/O if we want, here is HDR5 for example being set high
+     SIUL2.MSCR[PH5].B.OBE = 1;
+     SIUL2.GPDO[PH5].B.PDO_4n = 0;
 
-	/**** CAN SETUP ****/
-	MC_ME.PCTL[70].B.RUN_CFG = 0x1;   /* FlexCAN 0: select peripheral configuration RUN_PC[1] */
-	can0_init_rx();
+     /**** CAN SETUP ****/
+     MC_ME.PCTL[70].B.RUN_CFG = 0x1;   /* FlexCAN 0: select peripheral configuration RUN_PC[1] */
+     can0_init_rx();
 
-	uint8_t tx_buffer[5] = {'H', 'e', 'l', 'l', 'o'};
-	//Example of sending a CAN message.
-	//DO NOT uncomment the following unless you actually have something listening on CAN, since it will hold here
-	//until the message transmits OK (we aren't using interrupt-driven CAN).
-	//can0_tx(tx_buffer, 5);
+     uint8_t tx_buffer[5] = {'H', 'e', 'l', 'l', 'o'};
+     //Example of sending a CAN message.
+     //DO NOT uncomment the following unless you actually have something listening on CAN, since it will hold here
+     //until the message transmits OK (we aren't using interrupt-driven CAN).
+     //can0_tx(tx_buffer, 5);
 
-	int pwok;
-	uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
+     int pwok;
+     uint8_t correct_pw[] = {0xDE, 0xAD, 0xBE, 0xEF};
 
 #if SUPPORT_HSM
-	printf("Checking for HSM... ");
-	if (hsm_check()){
-		puts("Found");
-		LED_ON(LED_HSM);
-	} else {
-		LED_OFF(LED_HSM);
-		puts("NOT found");
-	}
+     printf("Checking for HSM... ");
+     if (hsm_check()){
+          puts("Found");
+          LED_ON(LED_HSM);
+     } else {
+          LED_OFF(LED_HSM);
+          puts("NOT found");
+     }
 #endif
 
-	simpleserial_init();
-    simpleserial_addcmd('k', 16, get_key);
-    //simpleserial_addcmd('c', 16, set_ct);
-    simpleserial_addcmd('p', 16,  get_pt);
-    simpleserial_addcmd('q',  32,  set_pw);
-    simpleserial_addcmd('h', 1, set_module);
-    simpleserial_addcmd('w', 1, set_pwgroup);
-    simpleserial_addcmd('l', 0, set_pwlock);
-    simpleserial_addcmd('j', 4, core_example);
-    simpleserial_addcmd('g', 0, glitch_example);
+     simpleserial_init();
+     simpleserial_addcmd('k', 16, get_key);
+     //simpleserial_addcmd('c', 16, set_ct);
+     simpleserial_addcmd('p', 16,  get_pt);
+     simpleserial_addcmd('q',  32,  set_pw);
+     simpleserial_addcmd('h', 1, set_module);
+     simpleserial_addcmd('w', 1, set_pwgroup);
+     simpleserial_addcmd('l', 0, set_pwlock);
+     simpleserial_addcmd('j', 4, core_example);
+     simpleserial_addcmd('g', 1, glitch_call);
+     simpleserial_addcmd('m', 0, monitor_mode);
 
-	/*
-	 * Basic application has two modes: CAN and UART.
-	 *
-	 *  CAN MODE:
-	 *    Send 4-byte password with ID 0x555, system responds with DE00 if wrong, DE01 if correct.
-	 *    Default password is DEADBEEF.
-	 *
-	 *  UART MODE:
-	 *    38,400 baud. Uses ChipWhisperer Simple-Serial Protocol, performs AES encryptions & other tasks.
-	 *
-	 */
+     /*
+      * Basic application has two modes: CAN and UART.
+      *
+      *  CAN MODE:
+      *    Send 4-byte password with ID 0x555, system responds with DE00 if wrong, DE01 if correct.
+      *    Default password is DEADBEEF.
+      *
+      *  UART MODE:
+      *    38,400 baud. Uses ChipWhisperer Simple-Serial Protocol, performs AES encryptions & other tasks.
+      *
+      */
 
 
-	while(1){
-		if (can0_rx_ready()){
+     while(1){
+          if (can0_rx_ready()){
 #if SUPPORT_HSM
-			hsm_release_gpio();
+               hsm_release_gpio();
 #endif
-			can0_rx();
+               can0_rx();
 
-			if (RxLENGTH == 4){
-				LED_OFF(LED_USER1);
-				LED_OFF(LED_USER2);
-				LED_ON(LED_USER3);
+               if (RxLENGTH == 4){
+                    LED_OFF(LED_USER1);
+                    LED_OFF(LED_USER2);
+                    LED_ON(LED_USER3);
 
-				TRIG_HIGH();
-				pwok = 0x00;
-				for(i =0; i < 4; i++){
-					pwok |= (correct_pw[i] ^ RxDATA[i]);
-				}
-				TRIG_LOW();
+                    TRIG_HIGH();
+                    pwok = 0x00;
+                    for(i =0; i < 4; i++){
+                         pwok |= (correct_pw[i] ^ RxDATA[i]);
+                    }
+                    TRIG_LOW();
 
-				if (pwok == 0){
-					pwok = 1;
-				} else {
-					pwok = 0;
-				}
+                    if (pwok == 0){
+                         pwok = 1;
+                    } else {
+                         pwok = 0;
+                    }
 
-				tx_buffer[0] = 0xDE;
-				tx_buffer[1] = pwok;
+                    tx_buffer[0] = 0xDE;
+                    tx_buffer[1] = pwok;
 
-				if (pwok){
-					LED_ON(LED_USER1);
-				} else {
-					LED_ON(LED_USER2);
-				}
+                    if (pwok){
+                         LED_ON(LED_USER1);
+                    } else {
+                         LED_ON(LED_USER2);
+                    }
 
-				LED_OFF(LED_USER3);
+                    LED_OFF(LED_USER3);
 
-				can0_tx(tx_buffer, 2);
-			}
-		}
+                    can0_tx(tx_buffer, 2);
+               }
+          }
 
-		//Wait for character
-		if(checkchar()){
-			simpleserial_get();
-		}
-	}
+          //Wait for character
+          if(checkchar()){
+               simpleserial_get();
+          }
+     }
 
-	/*
-		else if (c == 'c'){
-			ptr = 0;
+     /*
+       else if (c == 'c'){
+       ptr = 0;
 
-			MC_ME.CCTL[2].R = 0x0000;
-			MC_ME.CCTL[3].R = 0x0000;
+       MC_ME.CCTL[2].R = 0x0000;
+       MC_ME.CCTL[3].R = 0x0000;
 
-			continue;
-		}
+       continue;
+       }
 
-		else if (c == 'w'){
-			ptr = 0;
+       else if (c == 'w'){
+       ptr = 0;
 
-			MC_ME.CCTL[2].R = 0x00FE;
-			MC_ME.CCTL[3].R = 0x00FE;
+       MC_ME.CCTL[2].R = 0x00FE;
+       MC_ME.CCTL[3].R = 0x00FE;
 
-			continue;
-		}
-	*/
+       continue;
+       }
+     */
 
 
-	return 0;
+     return 0;
 }
 
 /********************  End of Main ***************************************/
