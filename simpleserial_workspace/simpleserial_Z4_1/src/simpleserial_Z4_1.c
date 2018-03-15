@@ -30,6 +30,7 @@
 #include "mode.h"
 #include "linflexd_uart.h"
 #include "can.h"
+#include "aes.h"
 
 #include "cw308t_mpc5748g.h"
 #include "sharedmem.h"
@@ -61,8 +62,8 @@ typedef union {
      ram_func f;
 } recv_sram ;
 
-aes_func CUSTOM_KEY_FUNC = 0x40030000;
-aes_func CUSTOM_ENC_FUNC = 0x40030200;
+aes_func CUSTOM_KEY_FUNC = (aes_func)0x40030000;
+aes_func CUSTOM_ENC_FUNC = (aes_func)0x40030100;
 
 extern void xcptn_xmpl(void);
 
@@ -250,10 +251,17 @@ uint8_t monitor_mode(uint8_t *k)
 
      return 0;
 }
+mbedtls_aes_context mbed;
+int mbed_init = 0;
 
 uint8_t set_module(uint8_t* mod)
 {
      enc_module = mod[0]; //& 0xF0;
+     //needed?
+     if (mbed_init) {
+          mbedtls_aes_free(&mbed);
+     }
+
      if (enc_module == MODULE_HWAES){
           hsm_setkeyidx(mod[0] & 0x0F);
      } else if (enc_module == MODULE_SWAES){
@@ -262,8 +270,12 @@ uint8_t set_module(uint8_t* mod)
           ;
      } else if (enc_module == MODULE_XOR){
           ;
+     } else if (enc_module == MODULE_MBED) {
+          mbedtls_aes_init(&mbed);
+     } else if (enc_module == MODULE_CUSTOM) {
+          ;
      } else {
-          printf("DEBUG: INVALID MODULE %02x", mod[0]);
+          printf("DEBUG: INVALID MODULE %02x\n", mod[0]);
           return 0xff;
      }
 
@@ -283,7 +295,13 @@ uint8_t get_key(uint8_t* k)
      else if (enc_module == MODULE_XOR){
           //todo
           ;
+     } else if (enc_module == MODULE_MBED){
+          mbedtls_aes_setkey_enc(&mbed, k, 128);
      } else if (enc_module == MODULE_CUSTOM) {
+          if (*(uint32_t *)CUSTOM_KEY_FUNC == 0x00000000) {
+               printf("Illegal instruction where start of key function expected\n");
+               return 0xFF;
+          }
           CUSTOM_KEY_FUNC(k);
      } else {
           return 0xFF;
@@ -325,8 +343,24 @@ uint8_t get_pt(uint8_t* pt)
 #endif
           TRIG_HIGH();
           TRIG_LOW();
+     } else if (enc_module == MODULE_MBED) {
+#if SUPPORT_HSM
+          hsm_release_gpio();
+#endif
+          TRIG_HIGH();
+          mbedtls_aes_crypt_ecb(&mbed, MBEDTLS_AES_ENCRYPT, pt, pt);
+          TRIG_LOW();
      } else if (enc_module == MODULE_CUSTOM) {
+          if (*(uint32_t *)CUSTOM_ENC_FUNC == 0x00000000) {
+               printf("Illegal instruction where start of encryption function expected\n");
+               return 0xFF;
+          }
+#if SUPPORT_HSM
+          hsm_release_gpio();
+#endif
+          TRIG_HIGH();
           CUSTOM_ENC_FUNC(pt);
+          TRIG_LOW();
      }
 
      simpleserial_put('r', 16, pt);
@@ -744,17 +778,3 @@ int main(void)
 
 
 /******************** Machine Check Exception ***************************/
-
-__attribute__ ((section(".set_key")))
-static void call_setkey(uint8_t *k) __attribute__((used));
-static void call_setkey(uint8_t *k)
-{
-     printf("Warning: using custom AES, but nothing was uploaded\n");
-}
-
-__attribute__ ((section(".enc")))
-static void call_enc(uint8_t *pt) __attribute__((used));
-static void call_enc(uint8_t *pt)
-{
-     printf("Warning: using custom AES, but nothing was uploaded\n");
-}

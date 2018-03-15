@@ -42,6 +42,7 @@ SECTIONS
       . = ALIGN(16);
     } > m_text
     
+
     
     
     .ctors :
@@ -151,21 +152,17 @@ SECTIONS
       __SP_INIT = . ;
       . += 4;
     } > m_data
+    
+
  
-     .sharedRAM (NOLOAD):
+     .sharedRAM (NOLOAD): ALIGN(4096)
     {
      *(.sharedRAM)
+     
     } > shared
     
-    .set_key :
-    {
-    	KEEP(*(.set_key))
-    } > m_setkey AT>m_text
+
     
-    .enc : 
-    {
-    	KEEP(*(.enc))
-    } > m_enc AT>m_text
  
  
 /*-------- LABELS USED IN CODE -------------------------------*/
@@ -178,13 +175,7 @@ __SDATA_SIZE  = SIZEOF(.sdata);
 __DATA_ROM_ADDR  = LOADADDR(.data);
 __SDATA_ROM_ADDR = LOADADDR(.sdata);
 
-__SETKEY_SRAM_ADDR = ADDR(.set_key);
-__SETKEY_SIZE = SIZEOF(.set_key);
-__SETKEY_ROM_ADDR = LOADADDR(.set_key);
 
-__ENC_SRAM_ADDR = ADDR(.enc);
-__ENC_SIZE = SIZEOF(.enc);
-__ENC_ROM_ADDR = LOADADDR(.enc);
    
 /* Labels Used for Initialising SRAM ECC */
 __SRAM_SIZE = SRAM_SIZE;

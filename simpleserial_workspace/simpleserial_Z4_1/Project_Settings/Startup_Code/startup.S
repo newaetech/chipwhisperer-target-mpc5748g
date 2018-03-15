@@ -132,7 +132,7 @@ SDATACOPY:
     e_lis       r9, __SDATA_SIZE@ha     # Load upper SRAM load size (# of bytes) into R9
     e_or2i      r9, __SDATA_SIZE@l      # Load lower SRAM load size into R9
     e_cmp16i    r9,0                    # Compare to see if equal to 0
-    e_beq       SETKEYCPY               # Exit cfg_ROMCPY if size is zero (no data to initialise)
+    e_beq       ROMCPYEND               # Exit cfg_ROMCPY if size is zero (no data to initialise)
 
     mtctr       r9                      # Store no. of bytes to be moved in counter
 
@@ -149,46 +149,6 @@ SDATACPYLOOP:
     e_stbu      r4, 1(r5)               # Store R4 data byte into SRAM at R5 and update SRAM address
     e_bdnz      SDATACPYLOOP            # Branch if more bytes to load from ROM
 
-SETKEYCPY:
-    e_lis       r9, __SETKEY_SIZE@ha      # Load upper SRAM load size (# of bytes) into R9
-    e_or2i      r9, __SETKEY_SIZE@l       # Load lower SRAM load size into R9
-    e_cmp16i    r9,0                    # Compare to see if equal to 0
-    e_beq       ENCCPY               # Exit cfg_ROMCPY if size is zero (no data to initialise)
-
-    mtctr       r9                      # Store no. of bytes to be moved in counter
-
-    e_lis       r10, __SETKEY_ROM_ADDR@h  # Load address of first SRAM load into R10
-    e_or2i      r10, __SETKEY_ROM_ADDR@l  # Load lower address of SRAM load into R10
-    e_subi      r10,r10, 1              # Decrement address to prepare for ROMCPYLOOP
-
-    e_lis       r5, __SETKEY_SRAM_ADDR@h  # Load upper SRAM address into R5 (from linker file)
-    e_or2i      r5, __SETKEY_SRAM_ADDR@l  # Load lower SRAM address into R5 (from linker file)
-    e_subi      r5, r5, 1               # Decrement address to prepare for ROMCPYLOOP
-
-SETKEYCPYLOOP:
-    e_lbzu      r4, 1(r10)              # Load data byte at R10 into R4,incrementing (update) ROM address
-    e_stbu      r4, 1(r5)               # Store R4 data byte into SRAM at R5 and update SRAM address
-    e_bdnz      SETKEYCPYLOOP             # Branch if more bytes to load from ROM
-ENCCPY:
-    e_lis       r9, __ENC_SIZE@ha      # Load upper SRAM load size (# of bytes) into R9
-    e_or2i      r9, __ENC_SIZE@l       # Load lower SRAM load size into R9
-    e_cmp16i    r9,0                    # Compare to see if equal to 0
-    e_beq       ROMCPYEND               # Exit cfg_ROMCPY if size is zero (no data to initialise)
-
-    mtctr       r9                      # Store no. of bytes to be moved in counter
-
-    e_lis       r10, __ENC_ROM_ADDR@h  # Load address of first SRAM load into R10
-    e_or2i      r10, __ENC_ROM_ADDR@l  # Load lower address of SRAM load into R10
-    e_subi      r10,r10, 1              # Decrement address to prepare for ROMCPYLOOP
-
-    e_lis       r5, __ENC_SRAM_ADDR@h  # Load upper SRAM address into R5 (from linker file)
-    e_or2i      r5, __ENC_SRAM_ADDR@l  # Load lower SRAM address into R5 (from linker file)
-    e_subi      r5, r5, 1               # Decrement address to prepare for ROMCPYLOOP
-
-ENCCPYLOOP:
-    e_lbzu      r4, 1(r10)              # Load data byte at R10 into R4,incrementing (update) ROM address
-    e_stbu      r4, 1(r5)               # Store R4 data byte into SRAM at R5 and update SRAM address
-    e_bdnz      ENCCPYLOOP             # Branch if more bytes to load from ROM
 ROMCPYEND:
 
 ;#*************************** Enable ME Bit in MSR *****************************

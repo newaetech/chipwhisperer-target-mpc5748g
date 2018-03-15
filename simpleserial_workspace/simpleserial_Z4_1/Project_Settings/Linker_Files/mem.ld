@@ -20,10 +20,6 @@ MEMORY
     m_text :	org = 0x1000000, len = 1856K  
     m_data :	org = 0x40020000,   len = 64K
     
-    m_setkey :  org = 0x40030000, len = 0x100
-	m_enc :		org = 0x40030100, len = 0x100
-    m_data_resv :	org = 0x40030200, len = 0xFE00
-    
     shared :    org = 0x40080000, len = 64k
 }
 
