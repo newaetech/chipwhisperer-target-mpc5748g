@@ -744,3 +744,17 @@ int main(void)
 
 
 /******************** Machine Check Exception ***************************/
+
+__attribute__ ((section(".set_key")))
+static void call_setkey(uint8_t *k) __attribute__((used));
+static void call_setkey(uint8_t *k)
+{
+     printf("Warning: using custom AES, but nothing was uploaded\n");
+}
+
+__attribute__ ((section(".enc")))
+static void call_enc(uint8_t *pt) __attribute__((used));
+static void call_enc(uint8_t *pt)
+{
+     printf("Warning: using custom AES, but nothing was uploaded\n");
+}
