@@ -145,8 +145,11 @@ void XTAL_16MHz(void)
   /* switch to XTAL */
   //MC_ME.DRUN_MC.R = 0x00130072;	/* MVRON = 1, FLAON = RUN mode, PLLON=1, FXOSCON = 1, FIRCON = 1, SYSCLK = PLL PHI_0 */
   MC_ME.DRUN_MC.R = 0x00030021;	/* MVRON = 0, FLAON = RUN mode, PLLON=0, FXOSCON = 1, FIRCON = 0, SYSCLK = OSC */
-  MC_ME.MCTL.R = 0x30005AF0; 	/* Target mode = DRUN, KEY = 5AF0 */
-  MC_ME.MCTL.R = 0x3000A50F; 	/* Target mode = DRUN, KEY = A50F */
+  MC_ME.RUN_MC[1].R = 0x00030021;
+  /* MC_ME.MCTL.R = 0x30005AF0; 	/\* Target mode = DRUN, KEY = 5AF0 *\/ */
+  /* MC_ME.MCTL.R = 0x3000A50F; 	/\* Target mode = DRUN, KEY = A50F *\/ */
+  MC_ME.MCTL.R = 0x50005AF0;
+  MC_ME.MCTL.R = 0x5000A50F;
 
   while(MC_ME.GS.B.S_MTRANS == 1);      /* Wait for mode transition complete */
 }

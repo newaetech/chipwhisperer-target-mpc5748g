@@ -48,8 +48,6 @@
 								<option id="gnu.c.compiler.option.preprocessor.def.symbols.1093042107" name="Defined symbols (-D)" superClass="gnu.c.compiler.option.preprocessor.def.symbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="register_architecture=e200"/>
 									<listOptionValue builtIn="false" value="START_FROM_FLASH"/>
-									<listOptionValue builtIn="false" value="TURN_ON_CPU1"/>
-									<listOptionValue builtIn="false" value="TURN_ON_CPU2"/>
 									<listOptionValue builtIn="false" value="register_vendor=Freescale"/>
 									<listOptionValue builtIn="false" value="register_chip=MPC5748G"/>
 									<listOptionValue builtIn="false" value="MPC574xG"/>
@@ -67,7 +65,10 @@
 									<listOptionValue builtIn="false" value="&quot;${eclipse_home}../S32DS/e200_ewl2/EWL_C/include/pa&quot;"/>
 								</option>
 								<option id="gnu.c.compiler.option.dialect.std.1230407894" name="Language standard" superClass="gnu.c.compiler.option.dialect.std" useByScannerDiscovery="true" value="gnu.c.compiler.dialect.c99" valueType="enumerated"/>
-								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.419435710" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" useByScannerDiscovery="false" valueType="undefDefinedSymbols"/>
+								<option id="gnu.c.compiler.option.preprocessor.undef.symbol.419435710" name="Undefined symbols (-U)" superClass="gnu.c.compiler.option.preprocessor.undef.symbol" useByScannerDiscovery="false" valueType="undefDefinedSymbols">
+									<listOptionValue builtIn="false" value="TURN_ON_CPU1"/>
+									<listOptionValue builtIn="false" value="TURN_ON_CPU2"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1829050634" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler.1353373678" name="Standard S32DS C++ Compiler" superClass="com.freescale.s32ds.cross.gnu.e200.tool.cpp.compiler">

@@ -25,6 +25,7 @@ int main(void)
 {
 	volatile uint32_t i;
 
+  while(MC_ME.GS.B.S_MTRANS == 1);      /* Wait for mode transition complete */
 	xcptn_xmpl ();              /* Configure and Enable Interrupts */
 
 	//SIUL2.MSCR[PH5].B.OBE = 1;  /* Pad PH5 (117) OBE=1. On EVB active low DS8 LED */

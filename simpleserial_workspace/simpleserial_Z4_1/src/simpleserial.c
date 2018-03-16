@@ -15,7 +15,7 @@ typedef struct ss_cmd
 	uint8_t (*fp)(uint8_t*);
 } ss_cmd;
 
-#define MAX_SS_CMDS 10
+#define MAX_SS_CMDS 20
 static ss_cmd commands[MAX_SS_CMDS];
 static int num_commands = 0;
 
@@ -78,7 +78,7 @@ void simpleserial_init()
 
 int simpleserial_addcmd(char c, unsigned int len, uint8_t (*fp)(uint8_t*))
 {
-	if(num_commands > MAX_SS_CMDS)
+	if(num_commands >= MAX_SS_CMDS)
 		return 1;
 
 	if(len > MAX_SS_LEN)

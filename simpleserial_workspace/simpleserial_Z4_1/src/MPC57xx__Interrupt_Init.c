@@ -182,7 +182,7 @@ void IVOR1_Exception_Handler(void)
 	printf("Machine Check Exception: %x\n", mcsr);
 
 	if (mcsr & (1<<1)) printf("   IC_DPERR\n");
-	if (mcsr & (1<<3)) printf("   DC_DPERR\n");
+	if (mcsr & (1<<3)) {printf("   DC_DPERR\n");}
 	if (mcsr & (1<<4)) printf("   EXCP_ERR\n");
 	if (mcsr & (1<<5)) printf("   IC_TPERR\n");
 	if (mcsr & (1<<6)) printf("   DC_TPERR\n");

@@ -79,6 +79,11 @@ __attribute__ ((section(".text")))
 /* Specify UART to use here - need to change init code too if modified */
 #define checkchar checkLINFlexD_0
 
+void delay_short(void)
+{
+     volatile uint32_t i;
+     for (i = 0; i < 1000; i++);
+}
 
 /* putchar needed by simpleserial, pass-through to our function */
 void txchar(char c)
@@ -577,6 +582,23 @@ uint8_t glitch_call(uint8_t *data)
      return 0;
 }
 
+void turn_on_cores()
+{
+     MC_ME.CCTL[2].R = 0x00FE;
+     /* Set Start address for core 1: Will reset and start */
+     MC_ME.CADDR[2].R = 0x11d0000 | 0x1;
+     /* enable core 2 in all modes */
+     MC_ME.CCTL[3].R = 0x00FE;
+     /* Set Start address for core 2: Will reset and start */
+     MC_ME.CADDR[3].R = 0x13a0000 | 0x1;
+
+     //turn cores on
+     MC_ME.MCTL.R = 0x50005AF0;
+     MC_ME.MCTL.R = 0x5000A50F;
+
+     while(MC_ME.GS.B.S_MTRANS == 1);      /* Wait for mode transition complete */
+}
+
 const char  * lcstatstring[] = { "Failure Analysis",
                                  "Reserved",
                                  "OEM Production",
@@ -604,26 +626,6 @@ int main(void)
 
      //Show CORE0 is alive (even if clock switch will fail)
      LED_ON(LED_CORE0);
-
-     //Turn on other cores (if in use) now
-#if defined(DEBUG_SECONDARY_CORES)
-     uint32_t mctl = MC_ME.MCTL.R;
-#if defined(TURN_ON_CPU1)
-     /* enable core 1 in all modes */
-     MC_ME.CCTL[2].R = 0x00FE;
-     /* Set Start address for core 1: Will reset and start */
-     MC_ME.CADDR[2].R = 0x11d0000 | 0x1;
-#endif
-#if defined(TURN_ON_CPU2)
-     /* enable core 2 in all modes */
-     MC_ME.CCTL[3].R = 0x00FE;
-     /* Set Start address for core 2: Will reset and start */
-     MC_ME.CADDR[3].R = 0x13a0000 | 0x1;
-#endif
-     MC_ME.MCTL.R = (mctl & 0xffff0000ul) | KEY_VALUE1;
-     MC_ME.MCTL.R =  mctl; /* key value 2 always from MCTL */
-#endif /* defined(DEBUG_SECONDARY_CORES) */
-
      sharedmem_init();
 
 
@@ -643,9 +645,14 @@ int main(void)
      //clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
 
      initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
+     printf("Activate cores 1 and 2? [y?]\n");
+     if (rxchar() == 'y') {
+          turn_on_cores();
+     }
 
      printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
      printf(" See http://cwdocs.com/mp57 for documentation\n");
+     delay_short();
      printf(" Device information:\n");
      printf("   Lifecycle from LCSTAT: %u (%s)\n", PASS.LCSTAT.B.LIFE, lcstatstring[PASS.LCSTAT.B.LIFE]);
      printf("   Firmware HSM support: %s\n", SUPPORT_HSM ? "enabled":"disabled");
