@@ -212,6 +212,8 @@ uint8_t monitor_fast(uint8_t *k)
                len.u32 = uart_get_u32();
                printf("%x\n", len.u32);
 
+               printf("r\n");
+               while (rxchar() != 'r');
                for (int i = 0; i < len.u32; i++) {
                     txchar(addr.p8[i]);
                }
@@ -291,6 +293,8 @@ uint8_t monitor_mode(uint8_t *k)
                len.u32 = uart_get_u32();
                printf("Got %x\n", len.u32);
 
+               printf("Send r when ready\n");
+               while (rxchar() != 'r');
                for (int i = 0; i < len.u32; i++) {
                     txchar(addr.p8[i]);
                }
