@@ -176,6 +176,78 @@ uint32_t uart_get_u32(void)
      return ascii_to_u32(buf);
 }
 
+uint8_t monitor_fast(uint8_t *k)
+{
+     char ch = 0;
+     while (ch != 'q') {
+          printf("C\n");
+          ch = rxchar();
+          printf("%c\n", ch);
+
+          if (ch == 'u') {
+               recv_sram addr;
+               recv_sram len;
+
+               printf("A\n");
+               addr.u32 = uart_get_u32();
+               printf("%x\n", addr.u32);
+
+               printf("L\n");
+               len.u32 = uart_get_u32();
+               printf("%x\n", len.u32);
+
+               printf("B\n");
+               for (int i = 0; i < len.u32; i++) {
+                    addr.p8[i] = rxchar();
+               }
+          } else if (ch == 'd') {
+               recv_sram addr;
+               recv_sram len;
+
+               printf("A\n");
+               addr.u32 = uart_get_u32();
+               printf("%x\n", addr.u32);
+
+               printf("L\n");
+               len.u32 = uart_get_u32();
+               printf("%x\n", len.u32);
+
+               for (int i = 0; i < len.u32; i++) {
+                    txchar(addr.p8[i]);
+               }
+          } else if (ch == 'e') {
+               recv_sram addr;
+               printf("A\n");
+               addr.u32 = uart_get_u32();
+               printf("%x\n", addr.u32);
+               addr.f();
+          } else if (ch == 'w') {
+               recv_sram addr;
+               recv_sram val;
+
+               printf("A\n");
+               addr.u32 = uart_get_u32();
+               printf("%x\n", addr.u32);
+
+               printf("V\n");
+               val.u32 = uart_get_u32();
+               printf("%x\n", val.u32);
+
+               *addr.p32 = val.u32;
+          } else if (ch == 'r') {
+               recv_sram addr;
+
+               printf("A\n");
+               addr.u32 = uart_get_u32();
+               printf("%x\n", addr.u32);
+
+               uint32_t val = *addr.p32;
+               printf("%x\n", val);
+          }
+     }
+
+     return 0;
+}
 
 uint8_t monitor_mode(uint8_t *k)
 {
@@ -697,6 +769,7 @@ int main(void)
      simpleserial_addcmd('j', 4, core_example);
      simpleserial_addcmd('g', 1, glitch_call);
      simpleserial_addcmd('m', 0, monitor_mode);
+     simpleserial_addcmd('n', 0, monitor_fast);
 
      /*
       * Basic application has two modes: CAN and UART.
