@@ -34,6 +34,7 @@ unsigned char rxLINFlexD_0( void );
 unsigned char checkLINFlexD_0( void );
 void echoLINFlexD_0( void );
 void testLINFlexD_0( void );
+void flushLINFlexD_0( void );
 
 
 #endif /* LINFLEXD_UART_H_ */
