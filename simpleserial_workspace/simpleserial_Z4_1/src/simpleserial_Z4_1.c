@@ -38,7 +38,7 @@
 
 #include "tinyaes128.h"
 
-#define SUPPORT_HSM 0
+#define SUPPORT_HSM 1
 
 #ifndef SUPPORT_HSM
 #define SUPPORT_HSM 0
@@ -232,13 +232,15 @@ uint8_t monitor_fast(uint8_t *k)
                recv_sram addr;
                recv_sram len;
 
+               flush();
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)addr.u32);
+               printf("%08x\n", (unsigned int)addr.u32);
+               flush();
 
                printf("L\n");
                len.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)len.u32);
+               printf("%08x\n", (unsigned int)len.u32);
 
                printf("B\n");
                for (int i = 0; i < len.u32; i++) {
@@ -248,13 +250,15 @@ uint8_t monitor_fast(uint8_t *k)
                recv_sram addr;
                recv_sram len;
 
+               flush();
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)addr.u32);
+               printf("%08x\n", (unsigned int)addr.u32);
 
+               flush();
                printf("L\n");
                len.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)len.u32);
+               printf("%08x\n", (unsigned int)len.u32);
 
                printf("r\n");
                while (rxchar() != 'r');
@@ -263,32 +267,27 @@ uint8_t monitor_fast(uint8_t *k)
                }
           } else if (ch == 'e') {
                recv_sram addr;
+               flush();
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)addr.u32);
+               printf("%08x\n", (unsigned int)addr.u32);
                addr.f();
           } else if (ch == 'w') {
                recv_sram addr;
                recv_sram val;
 
-               printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)addr.u32);
-
-               printf("V\n");
                val.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)val.u32);
+               printf("%08x, %08x\n", (unsigned int)val.u32);
 
                *addr.p32 = val.u32;
           } else if (ch == 'r') {
                recv_sram addr;
-
-               printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", (unsigned int)addr.u32);
+               printf("%08x=", (unsigned int)addr.u32);
 
                uint32_t val = *addr.p32;
-               printf("%x\n", (unsigned int)val);
+               printf("%08x\n", (unsigned int)val);
           }
      }
 
@@ -353,6 +352,7 @@ uint8_t monitor_mode(uint8_t *k)
           } else if (ch == 'e') {
                recv_sram addr;
 
+               flush();
                printf("Specify 32bit memory location to execute (ascii hex): \n");
                addr.u32 = uart_get_u32();
 
