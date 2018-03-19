@@ -280,3 +280,10 @@ unsigned char checkLINFlexD_0()  {      /* Optional utility for status check */
 void echoLINFlexD_0() {                 /* Optional utility to echo char. */
   txLINFlexD_0( rxLINFlexD_0() );
 }
+/****************************************************************************/
+
+void flushLINFlexD_0() {
+	while(checkLINFlexD_0()){
+		rxLINFlexD_0();
+	}
+}

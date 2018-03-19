@@ -38,7 +38,7 @@
 
 #include "tinyaes128.h"
 
-#define SUPPORT_HSM 1
+#define SUPPORT_HSM 0
 
 #ifndef SUPPORT_HSM
 #define SUPPORT_HSM 0
@@ -97,6 +97,11 @@ char rxchar(void)
      return rxLINFlexD_0();
 }
 
+void flush(void)
+{
+	flushLINFlexD_0();
+}
+
 /** Enable printf() - these are lazy routines to clip into EWL rather than use the
  *  correct callbacks. They work for now though. */
 int __read_console(__file_handle handle, unsigned char * buffer, size_t * count)
@@ -138,7 +143,6 @@ uint8_t pwgroup;
 
 uint8_t ascii_to_hex(char ch)
 {
-     uint8_t val;
      if (ch >= '0' && ch <= '9') {
           return ch - 48;
      } else if (ch >= 'A' && ch <= 'F') {
@@ -169,15 +173,55 @@ uint8_t ascii_to_u8(char text[2])
 
 uint32_t uart_get_u32(void)
 {
-     char buf[8];
-     for (int i = 0; i < 8; i++) {
-          buf[i] = rxchar();
+     char buf[8] = {0,0,0,0,0,0,0,0};
+     char c;
+     char started = 0;
+     unsigned int i = 0;
+
+     while(1){
+    	 c = rxchar();
+
+    	 //Skip first \n
+    	 if(started == 0){
+    		 if (c == '\n'){
+    			 started = 1;
+    			 continue;
+    		 }
+    	 }
+    	 started = 1;
+
+    	 if(c == ' ') continue;
+
+    	 //Check for done
+    	 if ((c == '\n') || (c == '\r')) break;
+
+    	 //Store character
+    	 buf[i++] = c;
+
+    	 //Check for done
+    	 if (i >= 8) break;
      }
+
+     //Pad left
+     if (i < 8){
+    	 int diff = 8 - i;
+    	 for (int j = 7; j >= diff; j--) {
+    		 buf[j] = buf[j-diff];
+    	 }
+
+    	 for (int j = 0; j < diff; j++) {
+    		 buf[j] = '0';
+    	 }
+     }
+
      return ascii_to_u32(buf);
 }
 
 uint8_t monitor_fast(uint8_t *k)
 {
+	  flush();
+	  LED_ON(LED_BLOAD);
+
      char ch = 0;
      while (ch != 'q') {
           printf("C\n");
@@ -190,11 +234,11 @@ uint8_t monitor_fast(uint8_t *k)
 
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", addr.u32);
+               printf("%x\n", (unsigned int)addr.u32);
 
                printf("L\n");
                len.u32 = uart_get_u32();
-               printf("%x\n", len.u32);
+               printf("%x\n", (unsigned int)len.u32);
 
                printf("B\n");
                for (int i = 0; i < len.u32; i++) {
@@ -206,11 +250,11 @@ uint8_t monitor_fast(uint8_t *k)
 
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", addr.u32);
+               printf("%x\n", (unsigned int)addr.u32);
 
                printf("L\n");
                len.u32 = uart_get_u32();
-               printf("%x\n", len.u32);
+               printf("%x\n", (unsigned int)len.u32);
 
                printf("r\n");
                while (rxchar() != 'r');
@@ -221,7 +265,7 @@ uint8_t monitor_fast(uint8_t *k)
                recv_sram addr;
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", addr.u32);
+               printf("%x\n", (unsigned int)addr.u32);
                addr.f();
           } else if (ch == 'w') {
                recv_sram addr;
@@ -229,11 +273,11 @@ uint8_t monitor_fast(uint8_t *k)
 
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", addr.u32);
+               printf("%x\n", (unsigned int)addr.u32);
 
                printf("V\n");
                val.u32 = uart_get_u32();
-               printf("%x\n", val.u32);
+               printf("%x\n", (unsigned int)val.u32);
 
                *addr.p32 = val.u32;
           } else if (ch == 'r') {
@@ -241,41 +285,48 @@ uint8_t monitor_fast(uint8_t *k)
 
                printf("A\n");
                addr.u32 = uart_get_u32();
-               printf("%x\n", addr.u32);
+               printf("%x\n", (unsigned int)addr.u32);
 
                uint32_t val = *addr.p32;
-               printf("%x\n", val);
+               printf("%x\n", (unsigned int)val);
           }
      }
 
+     LED_OFF(LED_BLOAD);
      return 0;
 }
 
 uint8_t monitor_mode(uint8_t *k)
 {
      printf("You are now in monitor mode\n");
-     char ch = 0;
+     flush();
+     LED_ON(LED_BLOAD);
+     char ch = '?';
      while (ch != 'q') {
+    	 if (ch == '?'){
           printf("Commands:\n"
-                 "\tu: Upload bin to SRAM\n"
-                 "\td: Dump SRAM\n"
-                 "\te: Execute SRAM\n"
-                 "\tw: Write SRAM\n"
-                 "\tr: Read SRAM\n"
-                 "\tq: Quit\n");
+                 "    u: Upload bin to SRAM\n"
+                 "    d: Dump SRAM\n"
+                 "    e: Execute SRAM\n"
+                 "    w 40020000 00001000: Write 0x00001000 to 0x40020000 in SRAM\n"
+                 "    r 40020000: Read 32-bit from SRAM 0x40020000\n"
+                 "    q: Quit\n");
+    	 }
+
           ch = rxchar();
 
           if (ch == 'u') {
                recv_sram addr;
                recv_sram len;
 
+               flush();
                printf("32bit memory location to load to (ascii hex): \n");
                addr.u32 = uart_get_u32();
-               printf("Got %x\n", addr.u32);
-
+               printf("Uploading to %08x\n", (unsigned int)addr.u32);
+               flush();
                printf("32bit length of bin file (ascii hex): \n");
                len.u32 = uart_get_u32();
-               printf("Got %x\n", len.u32);
+               printf("Got %08x\n", (unsigned int)len.u32);
 
                printf("Send bin: \n");
                for (int i = 0; i < len.u32; i++) {
@@ -285,13 +336,14 @@ uint8_t monitor_mode(uint8_t *k)
                recv_sram addr;
                recv_sram len;
 
+               flush();
                printf("32bit memory location to load (ascii hex): \n");
                addr.u32 = uart_get_u32();
-               printf("Got %x\n", addr.u32);
-
+               printf("Got %08x\n", (unsigned int)addr.u32);
+               flush();
                printf("32bit length of memory (ascii hex): \n");
                len.u32 = uart_get_u32();
-               printf("Got %x\n", len.u32);
+               printf("Got %08x\n", (unsigned int)len.u32);
 
                printf("Send r when ready\n");
                while (rxchar() != 'r');
@@ -304,31 +356,33 @@ uint8_t monitor_mode(uint8_t *k)
                printf("Specify 32bit memory location to execute (ascii hex): \n");
                addr.u32 = uart_get_u32();
 
-               printf("Executing memory location %x\n", addr.u32);
+               printf("Executing memory location %08x\n", (unsigned int)addr.u32);
                addr.f();
           } else if (ch == 'w') {
                recv_sram addr;
                recv_sram val;
-
-               printf("Specify 32bit memory location to write to (ascii hex): \n");
                addr.u32 = uart_get_u32();
-
-               printf("Specify 32bit value to write (ascii hex): \n");
                val.u32 = uart_get_u32();
 
-               printf("Writing %x to %x\n", val.u32, addr.u32);
+               printf("Writing %08x to %08x\n", (unsigned int)val.u32, (unsigned int)addr.u32);
                *addr.p32 = val.u32;
           } else if (ch == 'r') {
                recv_sram addr;
 
-               printf("Specify 32bit memory location to read from (ascii hex): \n");
                addr.u32 = uart_get_u32();
-               printf("Got %x\n", addr.u32);
+               printf("Memory at %08x =", (unsigned int)addr.u32);
 
                uint32_t val = *addr.p32;
-               printf("Memory at %x = %x\n", addr.u32, val);
+               printf(" %08x\n", (unsigned int) val);
+          } else if ((ch == '\n') || (ch == '\r')){
+        	  ;
+          } else {
+        	  printf("Unknown command '%c'\n", ch);
+        	  ch = '?';
           }
      }
+
+     LED_OFF(LED_BLOAD);
 
      return 0;
 }
@@ -363,21 +417,24 @@ uint8_t set_module(uint8_t* mod)
      return 0;
 }
 
+uint8_t xor_key[16];
+
 uint8_t get_key(uint8_t* k)
 {
      if (enc_module == MODULE_HWAES){
+#if SUPPORT_HSM
           hsm_setkey(k);
+#else
+          printf("HSM NOT SUPPORTED\n");
+#endif
      } else if (enc_module == MODULE_SWAES){
           AES128_ECB_tinyaes_setkey(k);
-     } else if (enc_module == MODULE_SWAESHSM){
-          //todo
-          ;
      }
      else if (enc_module == MODULE_XOR){
-          //todo
-          ;
+          memcpy((void *)xor_key, (void *)k, 16);
      } else if (enc_module == MODULE_MBED){
           mbedtls_aes_setkey_enc(&mbed, k, 128);
+
      } else if (enc_module == MODULE_CUSTOM) {
           if (*(uint32_t *)CUSTOM_KEY_FUNC == 0x00000000) {
                printf("Illegal instruction where start of key function expected\n");
@@ -423,6 +480,9 @@ uint8_t get_pt(uint8_t* pt)
           hsm_release_gpio();
 #endif
           TRIG_HIGH();
+          for(unsigned int i = 0; i < 16; i++){
+        	  pt[i] ^= xor_key[i];
+          }
           TRIG_LOW();
      } else if (enc_module == MODULE_MBED) {
 #if SUPPORT_HSM
@@ -608,7 +668,6 @@ uint8_t glitch_example()
           }
           printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
           TRIG_LOW();
-          //printf("%u %u %u %u %u\n", i, j, totalcnt, test, lcnt++);
      }
 
      printf("You broke out of the loop!\n");
@@ -623,6 +682,7 @@ void read_flash(void)
      hsm_release_gpio();
 #endif
 
+     printf("Entering flash glitch loop...\n");
      uint32_t i = 0;
 
      while(1){
@@ -653,6 +713,8 @@ uint8_t glitch_call(uint8_t *data)
      case 3:
           read_flash();
           break;
+     default:
+    	  printf("Invalid glitch call\n");
 
      }
      return 0;
@@ -693,6 +755,7 @@ int main(void)
      LED_SETUP(LED_CORE0);
      LED_SETUP(LED_CLKOK);
      LED_SETUP(LED_HSM);
+     LED_SETUP(LED_BLOAD);
 
      LED_SETUP(LED_USER1);
      LED_SETUP(LED_USER2);
@@ -721,18 +784,19 @@ int main(void)
      //clock_out_FMPLL();          /* Pad PG7 = CLOCKOUT = PLL0/10 */
 
      initLINFlexD_0( 4, 38400 );/* Initialize LINFlex0: UART Mode 4 MHz peripheral clock, 38400 Baud */
-     printf("Activate cores 1 and 2? [y?]\n");
+     delay_short();
+     printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
+     printf(" See http://cwdocs.com/mp57 for documentation\n");
+     printf("Activate cores 1 and 2? [y/N]\n");
      if (rxchar() == 'y') {
           turn_on_cores();
      }
-
-     printf("CW308T-MPC5748G Online. Firmware compile date: %s : %s", __DATE__, __TIME__);
-     printf(" See http://cwdocs.com/mp57 for documentation\n");
      delay_short();
      printf(" Device information:\n");
      printf("   Lifecycle from LCSTAT: %u (%s)\n", PASS.LCSTAT.B.LIFE, lcstatstring[PASS.LCSTAT.B.LIFE]);
+     printf("   Censorship status from LCSTAT: %d\n", PASS.LCSTAT.B.CNS);
      printf("   Firmware HSM support: %s\n", SUPPORT_HSM ? "enabled":"disabled");
-     //printf("   JTAG Password: ");
+     printf("See command list at http://cwdocs.com/mp57\n");
 
      //We can use some of the spare I/O if we want, here is HDR5 for example being set high
      SIUL2.MSCR[PH5].B.OBE = 1;
@@ -764,7 +828,6 @@ int main(void)
 
      simpleserial_init();
      simpleserial_addcmd('k', 16, get_key);
-     //simpleserial_addcmd('c', 16, set_ct);
      simpleserial_addcmd('p', 16,  get_pt);
      simpleserial_addcmd('q',  32,  set_pw);
      simpleserial_addcmd('h', 1, set_module);
@@ -833,26 +896,6 @@ int main(void)
                simpleserial_get();
           }
      }
-
-     /*
-       else if (c == 'c'){
-       ptr = 0;
-
-       MC_ME.CCTL[2].R = 0x0000;
-       MC_ME.CCTL[3].R = 0x0000;
-
-       continue;
-       }
-
-       else if (c == 'w'){
-       ptr = 0;
-
-       MC_ME.CCTL[2].R = 0x00FE;
-       MC_ME.CCTL[3].R = 0x00FE;
-
-       continue;
-       }
-     */
 
 
      return 0;
