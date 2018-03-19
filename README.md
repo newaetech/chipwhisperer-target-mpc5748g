@@ -43,7 +43,7 @@ On startup, the user will be prompted about activating cores 1 and 2. Activating
 This firmware does not contain a bootloader. Instead, arbitrary code can be loaded into RAM and executed using monitor mode (Simpleserial command m). All numbers sent should be ASCII hex. No newlines or additional characters should be sent unless prompted. Monitor mode can be used for the following:
 
 * (u)pload to RAM: Upload a binary file to RAM. The user will be prompted to enter the desired memory location and the length of the binary
-* (d)ump RAM: Dump RAM over serial. The user will be prompted for the address and amount of memory to dump
+* (d)ump RAM: Dump RAM over serial. The user will be prompted for the address and amount of memory to dump. The user will be asked to send an 'r' before the memory will be sent.
 * (e)xecute RAM: Jump to RAM and execute. The user will be prompted for the address to jump to
 * (w)rite RAM: Write 1 byte to RAM. The user will be prompted for the address to write to and the value to write
 * (r)ead RAM: Read 1 byte from RAM. The user will be prompted for the address to read from.

@@ -374,7 +374,7 @@ uint8_t monitor_mode(uint8_t *k)
 
                uint32_t val = *addr.p32;
                printf(" %08x\n", (unsigned int) val);
-          } else if ((ch == '\n') || (ch == '\r')){
+          } else if ((ch == '\n') || (ch == '\r') || (ch == 'q')){
         	  ;
           } else {
         	  printf("Unknown command '%c'\n", ch);
