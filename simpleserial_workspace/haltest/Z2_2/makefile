@@ -1,5 +1,5 @@
-TARGET=simpleserial_Z2_3
-SRC += simpleserial_Z2_3.c
+TARGET=simpleserial_Z2_2
+SRC += simpleserial_Z2_2.c
 
 SECONDARY_CORE = YES
 CPUTYPE=e200z2

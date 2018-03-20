@@ -1,5 +1,5 @@
 # MPC5748G Firmware
-This repo contains the source/project files needed to build firmware for the MPC5748G target board. It is designed to be used with S32 Design Studio (S32DS) (for now).
+This repo contains the source/project files needed to build firmware for the MPC5748G target board. It can be used with either S32 Design Studio or the standard ChipWhisperer build system.
 
 ## S32 Project Info
 To import into S32DS, open the Simpleserial_Workspace folder as a "Project from Another Filesystem". It should contain 5 (4 after Z0 is removed?) projects inside:
@@ -8,6 +8,24 @@ To import into S32DS, open the Simpleserial_Workspace folder as a "Project from 
 * Simpleserial_Z4_2: Firmware for Core 1. This is mainly used to show off communication between cores.
 * Simpleserial_Z2_1: Firmware for Core 2 (the Z2 core). This simply turns on the Core 2 LED.
 * Simpleserial_Ram: Firmware that can be sent over UART, loaded into RAM, and executed. See CUSTOM_AES for more details
+
+## ChipWhisperer Build System
+### Prerequisites
+The ChipWhisperer build system must first be setup with the location of the build tools. Since the MPC5748G uses vle instructions, which aren't supported on the main powerpc-gcc branch, the build tools shipped with S32DS must be used and the build system must be told where these build tools are located. To do this, edit haltest/hal/mpc5748g/Makefile.mpc5748g and change the variable S32PATH to the install location of S32DS. The default install location of S32DS is c:/nxp/S32DS_Power_v2017.R1 and is the default value of S32PATH.
+
+Once this makefile is updated, you should be able to build as normal with `make PLATFORM=CW308_MPC5748G CRYPTO_TARGET=NONE`.
+
+### Building for Multiple Cores
+By default (as in what would normally be used for building ChipWhisperer firmware), the build system will build for Core 1, which has different requirements than building for cores 1 or 2. To build for cores 1 and 2, additional linker scripts should be provided to prevent the cores from using the same flash and RAM. These should be specified by the variable EXTRA_LDSCRIPTS. In addition, the HAL should be told that these are secondary cores by setting the variable SECONDARY_CORE to YES.
+
+Because core 2 is a e200z2 core (cores 0 and 1 are e200z4), to build for core2, you should set CPUTYPE=e200z2 in your makefile.
+
+For examples on the above, see the folders Z4_2 (for core 1), and Z2_3 (for core 2).
+
+### Building for SRAM
+Like when building for multiple cores, additional steps must be taken to build for SRAM (for loading via monitor mode, for example). Like with cores 1 and 2, extra linker scripts need to be provided to put the code into SRAM. The variables SECONDARY_CORE and NOSTARTUP should both be set to YES. 
+
+To get a binary file for use with monitor mode, the makefile must include a target to build the binary file. An example, which also shows the correct options, linker scripts, and example custom AES program that can be extended, is shown in the Z4_RAM folder. This makefile will generate a binary file along with disassembly of the binary file when `make binary` is run. If you want to build for SRAM, using this build folder is the easiest way.
 
 ## Firmware Description
 ### Communication

@@ -42,7 +42,6 @@ SECTIONS
       . = ALIGN(16);
     } > m_text
     
-
     
     
     .ctors :
@@ -152,17 +151,11 @@ SECTIONS
       __SP_INIT = . ;
       . += 4;
     } > m_data
-    
-
  
-     .sharedRAM (NOLOAD): ALIGN(4096)
+     .sharedRAM (NOLOAD):
     {
      *(.sharedRAM)
-     
     } > shared
-    
-
-    
  
  
 /*-------- LABELS USED IN CODE -------------------------------*/
@@ -174,8 +167,6 @@ __DATA_SIZE   = SIZEOF(.data);
 __SDATA_SIZE  = SIZEOF(.sdata);
 __DATA_ROM_ADDR  = LOADADDR(.data);
 __SDATA_ROM_ADDR = LOADADDR(.sdata);
-
-
    
 /* Labels Used for Initialising SRAM ECC */
 __SRAM_SIZE = SRAM_SIZE;
