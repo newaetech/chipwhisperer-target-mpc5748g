@@ -27,6 +27,9 @@ Like when building for multiple cores, additional steps must be taken to build f
 
 To get a binary file for use with monitor mode, the makefile must include a target to build the binary file. An example, which also shows the correct options, linker scripts, and example custom AES program that can be extended, is shown in the Z4_RAM folder. This makefile will generate a binary file along with disassembly of the binary file when `make binary` is run. If you want to build for SRAM, using this build folder is the easiest way.
 
+### Simpleserial Note
+Note that this repo uses a slightly modified simpleserial. In the simpleserial provided with the rest of the ChipWhisperer firmware, the max number of simpleserial commands is 9 (plus the 'v' command). As the default firmware uses 10 commands, simpleserial.c was modified to allow for 19 commands.
+
 ## Firmware Description
 ### Communication
 UART communication is done at 38400 baud and CAN communication is done with Standard IDs at 500kbps.
