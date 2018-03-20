@@ -20,7 +20,7 @@ By default (as in what would normally be used for building ChipWhisperer firmwar
 
 Because core 2 is a e200z2 core (cores 0 and 1 are e200z4), to build for core2, you should set CPUTYPE=e200z2 in your makefile.
 
-For examples on the above, see the folders Z4_2 (for core 1), and Z2_3 (for core 2).
+For examples on the above, see the folders Z4_1 (for core 1), and Z2_2 (for core 2).
 
 ### Building for SRAM
 Like when building for multiple cores, additional steps must be taken to build for SRAM (for loading via monitor mode, for example). Like with cores 1 and 2, extra linker scripts need to be provided to put the code into SRAM. The variables SECONDARY_CORE and NOSTARTUP should both be set to YES. 
