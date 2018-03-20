@@ -1,13 +1,6 @@
 # MPC5748G Firmware
-This repo contains the source/project files needed to build firmware for the MPC5748G target board. It can be used with either S32 Design Studio or the standard ChipWhisperer build system.
+This repo contains the source/project files needed to build firmware for the MPC5748G target board. It can be used with the standard ChipWhisperer build system.
 
-## S32 Project Info
-To import into S32DS, open the Simpleserial_Workspace folder as a "Project from Another Filesystem". It should contain 5 (4 after Z0 is removed?) projects inside:
-
-* Simpleserial_Z4_1: Firmware for Core 0 and the main firmware. This runs all of the AES, glitch, and simpleserial stuff.
-* Simpleserial_Z4_2: Firmware for Core 1. This is mainly used to show off communication between cores.
-* Simpleserial_Z2_1: Firmware for Core 2 (the Z2 core). This simply turns on the Core 2 LED.
-* Simpleserial_Ram: Firmware that can be sent over UART, loaded into RAM, and executed. See CUSTOM_AES for more details
 
 ## ChipWhisperer Build System
 ### Prerequisites
