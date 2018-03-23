@@ -1,0 +1,46 @@
+VPATH += :$(HALPATH)/mpc5748g
+S32PATH = C:/nxp/S32DS_Power_v2017.R1
+CCPATH = $(S32PATH)/Cross_Tools/powerpc-eabivle-4_9/bin
+EWLPATH = $(S32PATH)/S32DS/e200_ewl2
+
+SPECS=ewl_c9x.specs
+
+ifeq ($(CPUTYPE),)
+	CPUTYPE=e200z4
+endif
+
+ifeq ($(EXTRA_LDSCRIPTS),)
+	EXTRA_LDSCRIPTS = $(HALPATH)/mpc5748g/mem.ld $(HALPATH)/mpc5748g/sections.ld
+endif
+
+#for main core only
+ifeq ($(SECONDARY_CORE),)
+	ASFLAGS += -DI_CACHE -DD_CACHE -DDISABLE_SWT0
+endif
+
+SRC += aes.c can.c clk.c flashrchw.c intc_SW_mode_isr_vectors_MPC5748G.c linflexd_uart.c mode.c MPC57xx__Interrupt_Init.c sharedmem.c hsm_interface.c tinyaes128.c Vector.c mpc5748g_hal.c
+EXTRAINCDIRS += $(HALPATH)/mpc5748g $(EWLPATH)/EWL_C/include $(EWLPATH)/EWL_C/include/pa
+
+ifeq ($(NOSTARTUP),)
+	ASRC += intc_sw_handlers.S startup.S
+endif
+
+CC = $(CCPATH)/powerpc-eabivle-gcc
+OBJCOPY = $(CCPATH)/powerpc-eabivle-objcopy
+OBJDUMP = $(CCPATH)/powerpc-eabivle-objdump
+SIZE = $(CCPATH)/powerpc-eabivle-size
+AR = $(CCPATH)/powerpc-eabivle-ar rcs
+NM = $(CCPATH)/powerpc-eabivle-nm
+
+#Output Format = Binary for this target
+FORMAT = binary
+
+COMMONS = --sysroot=$(EWLPATH) -specs=$(EWLPATH)/lib/$(SPECS) -mcpu=$(CPUTYPE) -DDEBUG_SECONDARY_CORES -DTURN_ON_CPU0 -DMPC57xG -Dregister_chip=MPC5748G -Dregister_architecture=e200 -DSTART_FROM_FLASH -Dregister_vendor=Freescale
+
+LDSCRIPTS = $(patsubst %,-T%,$(EXTRA_LDSCRIPTS))
+
+CFLAGS +=  -g3 -Wall -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -mbig -mvle -mregnames -mhard-float $(COMMONS)
+CPPFLAGS += -Dregister_architecture=e200 -g3 -Wall  -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -mbig -mvle -mregnames -mhard-float $(COMMONS)
+ASFLAGS += -Dregister_architecture=e200 -g3 -Wall  -fmessage-length=0 -fsigned-char -ffunction-sections -fdata-sections  -mbig -mvle -mregnames -mhard-float $(COMMONS)
+
+LDFLAGS += $(LDSCRIPTS) -Wl,--gc-sections
