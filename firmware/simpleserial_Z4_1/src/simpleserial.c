@@ -2,7 +2,11 @@
 
 #include "simpleserial.h"
 #include <stdint.h>
-#include "hal.h"
+
+/* Defined in main file */
+void txchar(char c);
+char rxchar(void);
+
 
 typedef struct ss_cmd
 {
@@ -20,6 +24,8 @@ static int num_commands = 0;
 #define SS_VER_1_0 0
 #define SS_VER_1_1 1
 
+#define SS_VER SS_VER_1_1
+
 static char hex_lookup[16] =
 {
 	'0', '1', '2', '3', '4', '5', '6', '7',
@@ -28,7 +34,8 @@ static char hex_lookup[16] =
 
 int hex_decode(int len, char* ascii_buf, uint8_t* data_buf)
 {
-	for(int i = 0; i < len; i++)
+	int i;
+	for(i = 0; i < len; i++)
 	{
 		char n_hi = ascii_buf[2*i];
 		char n_lo = ascii_buf[2*i+1];
@@ -74,7 +81,7 @@ int simpleserial_addcmd(char c, unsigned int len, uint8_t (*fp)(uint8_t*))
 	if(num_commands >= MAX_SS_CMDS)
 		return 1;
 
-	if(len >= MAX_SS_LEN)
+	if(len > MAX_SS_LEN)
 		return 1;
 
 	commands[num_commands].c   = c;
@@ -90,9 +97,10 @@ void simpleserial_get(void)
 	char ascii_buf[2*MAX_SS_LEN];
 	uint8_t data_buf[MAX_SS_LEN];
 	char c;
+	int i;
 
 	// Find which command we're receiving
-	c = getch();
+	c = rxchar();
 
 	int cmd;
 	for(cmd = 0; cmd < num_commands; cmd++)
@@ -106,9 +114,9 @@ void simpleserial_get(void)
 		return;
 
 	// Receive characters until we fill the ASCII buffer
-	for(int i = 0; i < 2*commands[cmd].len; i++)
+	for(i = 0; i < 2*commands[cmd].len; i++)
 	{
-		c = getch();
+		c = rxchar();
 
 		// Check for early \n
 		if(c == '\n' || c == '\r')
@@ -118,7 +126,7 @@ void simpleserial_get(void)
 	}
 
 	// Assert that last character is \n or \r
-	c = getch();
+	c = rxchar();
 	if(c != '\n' && c != '\r')
 		return;
 
@@ -139,16 +147,17 @@ void simpleserial_get(void)
 
 void simpleserial_put(char c, int size, uint8_t* output)
 {
+	int i;
 	// Write first character
-	putch(c);
+	txchar(c);
 
 	// Write each byte as two nibbles
-	for(int i = 0; i < size; i++)
+	for(i = 0; i < size; i++)
 	{
-		putch(hex_lookup[output[i] >> 4 ]);
-		putch(hex_lookup[output[i] & 0xF]);
+		txchar(hex_lookup[output[i] >> 4 ]);
+		txchar(hex_lookup[output[i] & 0xF]);
 	}
 
 	// Write trailing '\n'
-	putch('\n');
+	txchar('\n');
 }

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>haltest</name>
+	<name>simpleserial_Z4_2</name>
 	<comment></comment>
 	<projects>
+		<project>hello+pll_Z4_1</project>
+		<project>hello+pll_Z2_3</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
@@ -20,7 +22,6 @@
 	</buildSpec>
 	<natures>
 		<nature>org.eclipse.cdt.core.cnature</nature>
-		<nature>org.eclipse.cdt.core.ccnature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.managedBuildNature</nature>
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 	</natures>

@@ -18,7 +18,6 @@
 #include "derivative.h" /* include peripheral declarations */
 #include "project.h"
 #include "sharedmem.h"
-#include <stdio.h>
 
 extern void xcptn_xmpl(void);
 
@@ -28,7 +27,7 @@ int main(void)
 	uint8_t status;
 
 	AXBS_0.PORT[3].CRS.B.ARB = 1;  /* Round-robin (rotating) priority */
-
+	
 	xcptn_xmpl ();              /* Configure and Enable Interrupts */
 
 	SIUL2.MSCR[PA4].B.OBE = 1;
@@ -60,6 +59,6 @@ int main(void)
 		}
 
 	}
-
+	
 	return 0;
 }
