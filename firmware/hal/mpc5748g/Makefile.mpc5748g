@@ -18,7 +18,7 @@ ifeq ($(SECONDARY_CORE),)
 	ASFLAGS += -DI_CACHE -DD_CACHE -DDISABLE_SWT0
 endif
 
-SRC += aes.c can.c clk.c flashrchw.c intc_SW_mode_isr_vectors_MPC5748G.c linflexd_uart.c mode.c MPC57xx__Interrupt_Init.c sharedmem.c hsm_interface.c tinyaes128.c Vector.c mpc5748g_hal.c
+SRC += aes.c can.c clk.c flashrchw.c intc_SW_mode_isr_vectors_MPC5748G.c linflexd_uart.c mode.c MPC57xx__Interrupt_Init.c sharedmem.c tinyaes128.c Vector.c mpc5748g_hal.c
 EXTRAINCDIRS += $(HALPATH)/mpc5748g $(EWLPATH)/EWL_C/include $(EWLPATH)/EWL_C/include/pa
 
 ifeq ($(NOSTARTUP),)
