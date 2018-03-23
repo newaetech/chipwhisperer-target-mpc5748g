@@ -38,7 +38,7 @@
 
 #include "tinyaes128.h"
 
-#define SUPPORT_HSM 1
+#define SUPPORT_HSM 0
 
 #ifndef SUPPORT_HSM
 #define SUPPORT_HSM 0
